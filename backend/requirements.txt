@@ -1,0 +1,11 @@
+fastapi>=0.68.0
+uvicorn>=0.15.0
+python-multipart
+python-jose[cryptography]
+passlib[bcrypt]
+sqlalchemy
+pydantic-settings
+openai
+PyPDF2
+sentence-transformers
+faiss-cpu
