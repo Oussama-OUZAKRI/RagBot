@@ -17,32 +17,6 @@ api.interceptors.request.use((config) => {
   return Promise.reject(error);
 });
 
-// Intercepteur pour gérer les erreurs
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-    
-    // Si erreur 401 et pas déjà une tentative de refresh
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      
-      try {
-        // Tentative de rafraîchissement du token
-        await auth.refreshToken();
-        // Réessayer la requête originale
-        return api(originalRequest);
-      } catch (refreshError) {
-        // Si le refresh échoue, déconnecter l'utilisateur
-        await auth.logout();
-        return Promise.reject(refreshError);
-      }
-    }
-    
-    return Promise.reject(error);
-  }
-);
-
 // Service d'authentification
 export const auth = {
   login: (credentials) => api.post('/auth/login', credentials),

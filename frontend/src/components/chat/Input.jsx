@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { PaperAirplaneIcon, ArrowPathIcon } from '@heroicons/react/24/solid'
+import { Send, RefreshCw } from 'lucide-react'
 
 export const Input = ({ onSend, isLoading, hasSelectedDocs }) => {
   const [message, setMessage] = useState('')
@@ -63,9 +63,9 @@ export const Input = ({ onSend, isLoading, hasSelectedDocs }) => {
           }`}
         >
           {isLoading ? (
-            <ArrowPathIcon className="w-5 h-5 animate-spin" />
+            <RefreshCw className="w-5 h-5 animate-spin" />
           ) : (
-            <PaperAirplaneIcon className="w-5 h-5" />
+            <Send className="w-5 h-5" />
           )}
         </button>
       </div>

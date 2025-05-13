@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 class Token(BaseModel):
   access_token: str
@@ -8,13 +8,11 @@ class Token(BaseModel):
 
 class User(BaseModel):
   username: str
-  email: Optional[str] = None
-  full_name: Optional[str] = None
+  email: EmailStr = None
   role: Optional[str] = "user"
   is_active: Optional[bool] = True
 
 class UserCreate(BaseModel):
   username: str
-  email: str
+  email: EmailStr
   password: str
-  full_name: Optional[str] = None

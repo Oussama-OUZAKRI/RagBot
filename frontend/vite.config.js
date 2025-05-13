@@ -8,4 +8,7 @@ export default defineConfig({
     react(),
     tailwindcss()
   ],
+  server: {
+    allowedHosts: ["5173-oussamaouzakri-ragbot-iwoyhznmec5.ws-eu118.gitpod.io"]
+  }
 })

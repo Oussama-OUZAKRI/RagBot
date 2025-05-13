@@ -1,9 +1,23 @@
-import api from './api';
+import axios from 'axios';
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api',
+  headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
+});
 
 // Fonctions d'authentification
 export const login = async (credentials) => {
   try {
-    const response = await api.post('/auth/login', credentials);
+    const formData = new URLSearchParams()
+    formData.append('username', credentials.email)
+    formData.append('password', credentials.password)
+
+    const response = await api.post('/auth/login', formData, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    });
     const { access_token } = response.data;
     
     localStorage.setItem('access_token', access_token);
@@ -37,6 +51,7 @@ export const getCurrentUser = async () => {
 export const register = async (userData) => {
   try {
     const response = await api.post('/auth/register', userData);
+    console.log(response);
     return response.data;
   } catch (error) {
     // Gérer les erreurs d'inscription ici si nécessaire

@@ -43,11 +43,15 @@ export const Register = () => {
     setLoading(true)
 
     try {
-      const success = await register(formData.name, formData.email, formData.password)
+      const success = await register({
+        username: formData.name,
+        email: formData.email,
+        password: formData.password
+      })
       if (success) {
-        navigate('/login', { state: { message: 'Inscription réussie. Vous pouvez maintenant vous connecter.' } })
+        navigate('/login');
       } else {
-        setError('Cette adresse e-mail est déjà utilisée.')
+        setError('Cette adresse e-mail est déjà utilisée.');
       }
     } catch (err) {
       setError('Une erreur est survenue. Veuillez réessayer plus tard.')

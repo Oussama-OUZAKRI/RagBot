@@ -15,7 +15,10 @@ export const Login = ({ setAuthenticated }) => {
     setLoading(true)
 
     try {
-      const success = await login(email, password)
+      const success = await login({
+        email: email,
+        password: password
+      })
       if (success) {
         setAuthenticated(true)
         navigate('/dashboard')

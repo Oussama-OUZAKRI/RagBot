@@ -41,7 +41,7 @@ function App() {
 
   return (
     <div className="app">
-      {/* {authenticated ? (
+      {authenticated ? (
         <div className="flex h-screen overflow-hidden">
           <Sidebar userRole={userRole} />
           <div className="flex flex-col flex-1 overflow-hidden">
@@ -95,54 +95,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
-      )} */}
-      <div className="flex h-screen overflow-hidden">
-        <Sidebar userRole={userRole} />
-        <div className="flex flex-col flex-1 overflow-hidden">
-          <Navbar setAuthenticated={setAuthenticated} />
-          <main className="flex-1 overflow-y-auto p-4 bg-gray-50">
-            <Routes>
-              <Route 
-                path="/" 
-                element={<Navigate to="/dashboard" replace />} 
-              />
-              <Route 
-                path="/dashboard" 
-                element={
-                  <ProtectedRoute authenticated userRole={userRole}>
-                    <Dashboard />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/documents" 
-                element={
-                  <ProtectedRoute authenticated userRole={userRole}>
-                    <Documents />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/chat" 
-                element={
-                  <ProtectedRoute authenticated userRole={userRole}>
-                    <Chat />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/admin" 
-                element={
-                  <ProtectedRoute authenticated userRole={userRole} allowedRoles={['admin']}>
-                    <Admin />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
-            </Routes>
-          </main>
-        </div>
-      </div>
+      )}
     </div>
   )
 }

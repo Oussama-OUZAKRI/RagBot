@@ -10,6 +10,9 @@ Base = declarative_base()
 engine = create_engine(settings.DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+# création des tables (models)
+Base.metadata.create_all(engine)
+
 def get_db():
   """Générateur de sessions de base de données"""
   db = SessionLocal()
