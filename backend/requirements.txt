@@ -9,3 +9,8 @@ openai
 PyPDF2
 sentence-transformers
 faiss-cpu
+pdfminer.six
+python-docx
+pdfminer
+supabase
+bcrypt

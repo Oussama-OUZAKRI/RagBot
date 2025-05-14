@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, Text
+from sqlalchemy import Column, String, Integer, Text, ForeignKey
 
 from app.db.base import Base
 
@@ -8,7 +8,7 @@ class Document(Base):
   id = Column(Integer, primary_key=True, index=True)
   user_id = Column(Integer, ForeignKey("users.id"))
   original_filename = Column(String(255))
-  gcs_uri = Column(String(500))
+  storage_uri = Column(String(500))
   content_preview = Column(Text)
   vector_id = Column(String(255))
   file_size = Column(Integer)

@@ -55,7 +55,7 @@ function App() {
                 <Route 
                   path="/dashboard" 
                   element={
-                    <ProtectedRoute>
+                    <ProtectedRoute authenticated={authenticated} userRole={userRole}>
                       <Dashboard />
                     </ProtectedRoute>
                   } 
@@ -63,7 +63,7 @@ function App() {
                 <Route 
                   path="/documents" 
                   element={
-                    <ProtectedRoute>
+                    <ProtectedRoute authenticated={authenticated} userRole={userRole}>
                       <Documents />
                     </ProtectedRoute>
                   } 
@@ -71,7 +71,7 @@ function App() {
                 <Route 
                   path="/chat" 
                   element={
-                    <ProtectedRoute>
+                    <ProtectedRoute authenticated={authenticated} userRole={userRole}>
                       <Chat />
                     </ProtectedRoute>
                   } 
@@ -79,7 +79,7 @@ function App() {
                 <Route 
                   path="/admin" 
                   element={
-                    <ProtectedRoute allowedRoles={['admin']}>
+                    <ProtectedRoute authenticated={authenticated} userRole={userRole}>
                       <Admin />
                     </ProtectedRoute>
                   } 

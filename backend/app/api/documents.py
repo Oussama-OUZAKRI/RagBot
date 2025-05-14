@@ -1,26 +1,26 @@
-from typing import Annotated
+from typing import Annotated, List
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, status
-from google.cloud import storage
+from supabase import create_client, Client
+import mimetypes
 from sqlalchemy.orm import Session
 import uuid
 from pathlib import Path
 
-from app.services.AuthService import get_current_active_user
-from backend.app.services.VectorStore import VectorStoreService
-from app.services.embedding import get_embeddings
+from app.dependencies import get_current_active_user
+from app.services.VectorStore import VectorStoreService
+from app.services.EmbeddingService import get_embedding_service
 from app.utils.file_parser import parse_pdf, parse_docx, parse_txt
 from app.utils.text_processing import chunk_text
 from app.models.document import Document
 from app.models.user import User
 from app.db.base import get_db
-from app.schemas.document import DocumentResponse
+from app.schemas.document import DocumentUploadResponse, DocumentResponse
 from app.core.config import settings
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
-# Configuration GCS
-storage_client = storage.Client.from_service_account_json(settings.GCP_SERVICE_ACCOUNT_PATH)
-bucket_name = settings.GCP_STORAGE_BUCKET_NAME
+# Initialisation du client Supabase
+supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 
 # Dependencies
 DatabaseSession = Annotated[Session, Depends(get_db)]
@@ -36,90 +36,147 @@ FILE_PARSERS = {
 # Types MIME autorisés
 ALLOWED_MIME_TYPES = list(FILE_PARSERS.keys())
 
-def upload_to_gcs(file_content: bytes, destination_blob_name: str, content_type: str) -> str:
-  """Upload file to Google Cloud Storage"""
-  bucket = storage_client.bucket(bucket_name)
-  blob = bucket.blob(destination_blob_name)
-  
-  blob.upload_from_string(
-    file_content,
-    content_type=content_type
-  )
-  
-  return f"gs://{bucket_name}/{destination_blob_name}"
+def upload_to_supabase(file_content: bytes, file_path: str, content_type: str) -> str:
+  """Upload file to Supabase Storage"""
+  try:
+    # Déterminer le type MIME si non spécifié
+    if not content_type:
+      content_type = mimetypes.guess_type(file_path)[0] or 'application/octet-stream'
+    
+    # Upload du fichier
+    res = supabase.storage.from_(settings.SUPABASE_BUCKET_NAME).upload(
+      path=file_path,
+      file=file_content,
+      file_options={"content-type": content_type}
+    )
+    
+    # Récupérer l'URL publique
+    url = supabase.storage.from_(settings.SUPABASE_BUCKET_NAME).get_public_url(file_path)
+    return url
+  except Exception as e:
+    raise HTTPException(
+      status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+      detail=f"Supabase upload failed: {str(e)}"
+    )
 
 @router.post(
-  "/upload",
-  response_model=DocumentResponse,
-  status_code=status.HTTP_201_CREATED,
-  responses={
-    400: {"description": "Unsupported file type"},
-    413: {"description": "File too large"},
-    500: {"description": "Internal server error"}
-  }
+  "/",
+  response_model=List[DocumentUploadResponse],
+  status_code=status.HTTP_207_MULTI_STATUS
 )
 async def upload_file(
   current_user: CurrentUser,
   db: DatabaseSession,
-  file: UploadFile = File(...)
+  files: List[UploadFile] = File(...)
 ):
   """Upload and process documents (PDF, DOCX, TXT) for RAG pipeline"""
-  # Validate file type
-  if file.content_type not in ALLOWED_MIME_TYPES:
-    raise HTTPException(
-      status_code=status.HTTP_400_BAD_REQUEST,
-      detail=f"Unsupported file type. Supported types: {', '.join(ALLOWED_MIME_TYPES)}"
-    )
+  results = []
+  max_size = 10 * 1024 * 1024  # 10MB
 
-  try:
-    file_content = await file.read()
-    
-    # Generate unique filename with original extension
-    file_ext = Path(file.filename).suffix.lower()
-    unique_filename = f"documents/{current_user.id}/{uuid.uuid4()}{file_ext}"
-    
-    # 1. Upload original file to GCS
-    gcs_uri = upload_to_gcs(file_content, unique_filename, file.content_type)
-    
-    # 2. Parse content based on file type
-    parse_func = FILE_PARSERS[file.content_type]
-    text = parse_func(file_content)
-    
-    # 3. Process text
-    chunks = chunk_text(text, chunk_size=512, overlap=64)
-    embeddings = get_embeddings().encode_documents(chunks)
-    
-    # 4. Store in vector database
-    vector_store = VectorStoreService()
-    doc_id = vector_store.add_documents(chunks, embeddings)
-    
-    # 5. Save metadata in database
-    db_doc = Document(
-      user_id=current_user.id,
-      original_filename=file.filename,
-      gcs_uri=gcs_uri,
-      content_preview=text[:5000],
-      vector_id=doc_id,
-      file_size=len(file_content),
-      file_type=file.content_type,
-      file_extension=file_ext
-    )
-    
-    db.add(db_doc)
-    db.commit()
-    db.refresh(db_doc)
-    
-    return {
-      "message": "Document processed and stored successfully",
-      "document_id": db_doc.id,
-      "gcs_uri": gcs_uri,
-      "vector_id": doc_id,
-      "file_type": file.content_type
-    }
+  for file in files :
+    try:
+      # Validate file type
+      if file.content_type not in ALLOWED_MIME_TYPES:
+        raise HTTPException(
+          status_code=400,
+          detail=f"Unsupported file type: {file.content_type}"
+        )
+
+      # Validate file size
+      if file.size > max_size:
+        raise HTTPException(
+          status_code=413,
+          detail=f"File too large. Max size: {max_size} bytes"
+        )
       
-  except Exception as e:
-    db.rollback()
-    raise HTTPException(
-      status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-      detail=f"Error processing document: {str(e)}"
-    )
+      file_content = await file.read()
+      
+      # Generate unique filename with original extension
+      file_ext = Path(file.filename).suffix.lower()
+      if file_ext : unique_filename = f"documents/{current_user.id}/{uuid.uuid4()}{file_ext}"
+      
+      # 1. Upload vers Supabase Storage
+      file_url = upload_to_supabase(file_content, unique_filename, file.content_type)
+      
+      # 2. Parse content based on file type
+      parse_func = FILE_PARSERS[file.content_type]
+      text = parse_func(file_content)
+      
+      # 3. Process text
+      chunks = chunk_text(text, chunk_size=512, overlap=64)
+      embeddings = get_embedding_service.get_embeddings(chunks)
+      
+      # 4. Store in vector database
+      vector_store = VectorStoreService()
+      doc_id = vector_store.add_documents(chunks, embeddings)
+      
+      # 5. Save metadata in database
+      db_doc = Document(
+        user_id=current_user.id,
+        original_filename=file.filename,
+        storage_url=file_url,
+        vector_id=doc_id,
+        file_size=len(file_content),
+        file_type=file.content_type,
+        file_extension=file_ext,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+      )
+      
+      db.add(db_doc)
+      db.commit()
+      db.refresh(db_doc)
+
+      results.append(DocumentUploadResponse(
+        success=True,
+        message=f"Document {file.filename} processed successfully",
+        document=DocumentResponse(
+          id=db_doc.id,
+          user_id=current_user.id,
+          original_filename=file.filename,
+          storage_url=file_url,
+          content_preview=text[:5000],
+          vector_id=doc_id,
+          file_size=len(file_content),
+          file_type=file.content_type,
+          file_extension=file_ext,
+          created_at=db_doc.created_at,
+          updated_at=db_doc.updated_at
+        )
+      ))
+
+    except HTTPException as http_exc:
+      db.rollback()
+      results.append(DocumentUploadResponse(
+        success=False,
+        message="Processing failed",
+        error=http_exc.detail,
+        status_code=http_exc.status_code,
+        filename=file.filename
+      ))
+      logger.warning(f"File processing failed: {file.filename} - {http_exc.detail}")
+
+    except SQLAlchemyError as db_exc:
+      db.rollback()
+      logger.error(f"Database error: {str(db_exc)}")
+      results.append(DocumentUploadResponse(
+        success=False,
+        message="Database operation failed",
+        error=db_exc.detail,
+        status_code=db_exc.status_code,
+        filename=file.filename
+      ))
+
+    except Exception as e:
+      db.rollback()
+      logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+      results.append(DocumentUploadResponse(
+        success=False,
+        message="Internal server error",
+        error=str(e),
+        status_code=500,
+        filename=file.filename
+      ))
+
+  return results
+        

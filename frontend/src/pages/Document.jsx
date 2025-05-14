@@ -35,7 +35,7 @@ const DocumentsPage = () => {
               chunks: 34,
               status: 'indexed',
               visibility: 'team',
-              uploadedBy: user.id,
+              uploadedBy: user?.id,
               uploadDate: '2025-05-05T10:30:00Z',
               indexedAt: '2025-05-05T10:35:00Z'
             },
@@ -48,7 +48,7 @@ const DocumentsPage = () => {
               chunks: 48,
               status: 'indexed',
               visibility: 'private',
-              uploadedBy: user.id,
+              uploadedBy: user?.id,
               uploadDate: '2025-05-04T14:15:00Z',
               indexedAt: '2025-05-04T14:20:00Z'
             },
@@ -136,7 +136,7 @@ const DocumentsPage = () => {
       const matchesType = filters.type === 'all' || doc.type === filters.type;
       const matchesStatus = filters.status === 'all' || doc.status === filters.status;
       const matchesVisibility = filters.visibility === 'all' || doc.visibility === filters.visibility;
-      const matchesOwnership = doc.uploadedBy === user.id || doc.visibility !== 'private';
+      const matchesOwnership = (user?.id && (doc.uploadedBy === user.id)) || doc.visibility !== 'private';
       
       return matchesSearch && matchesType && matchesStatus && matchesVisibility && matchesOwnership;
     });
@@ -155,7 +155,7 @@ const DocumentsPage = () => {
   return (
     <div className="p-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h1 className="text-2xl font-bold text-gray-800">Gestion des Documents</h1>
+        <h1 className="text-2xl font-bold text-gray-800 hover:cursor-pointer">Gestion des Documents</h1>
         
         <button
           onClick={() => setIsUploadModalOpen(true)}

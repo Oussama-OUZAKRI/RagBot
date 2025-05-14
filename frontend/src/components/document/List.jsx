@@ -51,7 +51,7 @@ export const DocumentList = () => {
               size: '5.1 MB',
               status: 'indexed',
               visibility: 'public',
-              uploadedBy: user.id,
+              uploadedBy: user?.id,
               uploadedAt: '2025-05-02T09:15:00Z',
               indexedAt: '2025-05-02T09:20:00Z'
             },
@@ -63,7 +63,7 @@ export const DocumentList = () => {
               size: '1.8 MB',
               status: 'processing',
               visibility: 'private',
-              uploadedBy: user.id,
+              uploadedBy: user?.id,
               uploadedAt: '2025-05-03T11:45:00Z',
               indexedAt: null
             },
@@ -75,7 +75,7 @@ export const DocumentList = () => {
               size: '0.2 MB',
               status: 'indexed',
               visibility: 'private',
-              uploadedBy: user.id,
+              uploadedBy: user?.id,
               uploadedAt: '2025-05-04T16:20:00Z',
               indexedAt: '2025-05-04T16:22:00Z'
             },
@@ -191,7 +191,7 @@ export const DocumentList = () => {
       const matchesType = filters.type === 'all' || doc.type === filters.type;
       const matchesStatus = filters.status === 'all' || doc.status === filters.status;
       const matchesVisibility = filters.visibility === 'all' || doc.visibility === filters.visibility;
-      const matchesOwnership = doc.uploadedBy === user.id || doc.visibility !== 'private';
+      const matchesOwnership = (user?.id && (doc.uploadedBy === user.id)) || doc.visibility !== 'private';
       
       return matchesSearch && matchesType && matchesStatus && matchesVisibility && matchesOwnership;
     })

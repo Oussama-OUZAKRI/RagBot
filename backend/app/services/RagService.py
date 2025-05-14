@@ -1,6 +1,6 @@
 # backend/app/services/rag_service.py
 from openai import OpenAI
-from ..core.config import settings
+from app.core.config import settings
 
 class RAGService:
   def __init__(self):

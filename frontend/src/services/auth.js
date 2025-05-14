@@ -6,6 +6,17 @@ const api = axios.create({
   withCredentials: true,
 });
 
+// Intercepteur pour ajouter le token à chaque requête
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
+
 // Fonctions d'authentification
 export const login = async (credentials) => {
   try {
@@ -22,7 +33,8 @@ export const login = async (credentials) => {
     
     localStorage.setItem('access_token', access_token);
     
-    return access_token;
+    const user = await getCurrentUser();
+    return user;
   } catch (error) {
     // Gérer les erreurs de connexion ici si nécessaire
     throw error;
@@ -38,13 +50,7 @@ export const getCurrentUser = async () => {
     const response = await api.get('/auth/me');
     return response.data;
   } catch (error) {
-    // Si le token est invalide ou expiré
-    if (error.response?.status === 401) {
-      await logout();
-    }
-    else {
-      throw error;
-    }
+    throw error;
   }
 };
 

@@ -17,15 +17,6 @@ api.interceptors.request.use((config) => {
   return Promise.reject(error);
 });
 
-// Service d'authentification
-export const auth = {
-  login: (credentials) => api.post('/auth/login', credentials),
-  logout: () => api.post('/auth/logout'),
-  refreshToken: () => api.post('/auth/refresh'),
-  register: (userData) => api.post('/auth/register', userData),
-  getCurrentUser: () => api.get('/auth/me'),
-};
-
 // Service des documents
 export const documents = {
   upload: (formData, onUploadProgress) => {

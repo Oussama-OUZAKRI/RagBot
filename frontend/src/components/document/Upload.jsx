@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { UploadCloud, FileText, X, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { documents } from '../../services/api';
+import { documents } from '../../services';
 
 export const DocumentUpload = () => {
   const { user } = useAuth();
@@ -52,7 +52,7 @@ export const DocumentUpload = () => {
           description: metadata.description,
           tags: metadata.tags.split(',').map(tag => tag.trim()),
           visibility: metadata.visibility,
-          uploadedBy: user.id
+          uploadedBy: user?.id
         }));
 
         try {
@@ -92,7 +92,7 @@ export const DocumentUpload = () => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+    <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 mt-8">
       <h2 className="text-xl font-semibold mb-4 flex items-center">
         <UploadCloud className="mr-2" size={20} />
         Téléverser des documents
@@ -117,7 +117,7 @@ export const DocumentUpload = () => {
             onChange={handleFileChange}
             className="hidden"
             multiple
-            accept=".pdf,.docx,.pptx,.txt"
+            accept=".pdf,.docx,.txt"
           />
         </div>
 
@@ -178,7 +178,7 @@ export const DocumentUpload = () => {
         {/* Métadonnées */}
         <div className="mb-6">
           <h3 className="text-sm font-medium text-gray-700 mb-3">Métadonnées</h3>
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-4 mx-4">
             <div>
               <label className="block text-sm text-gray-500 mb-1">Titre (optionnel)</label>
               <input
@@ -211,7 +211,7 @@ export const DocumentUpload = () => {
                 className="w-full border border-gray-300 rounded-md p-2"
                 placeholder="tag1, tag2, tag3"
               />
-              <p className="text-xs text-gray-500 mt-1">Séparez les tags par des virgules</p>
+              <p className="text-xs text-red-500 mt-1">Séparez les tags par des virgules</p>
             </div>
             <div>
               <label className="block text-sm text-gray-500 mb-1">Visibilité</label>
@@ -233,7 +233,7 @@ export const DocumentUpload = () => {
         <button
           type="submit"
           disabled={isUploading || files.length === 0}
-          className={`w-full flex justify-center items-center py-2 px-4 rounded-md text-white ${
+          className={`w-full flex justify-center items-center py-2 px-4 rounded-md text-white cursor-pointer ${
             isUploading ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'
           }`}
         >
