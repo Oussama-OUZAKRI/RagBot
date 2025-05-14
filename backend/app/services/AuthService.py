@@ -10,17 +10,18 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.db.base import get_db
 from app.models.user import User as DBUser
+from app.core.security import pwd_context, oauth2_scheme
 
 class AuthService:
   @staticmethod
   def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Vérifie si le mot de passe correspond au hash"""
-    return settings.PWD_CONTEXT.verify(plain_password, hashed_password)
+    return pwd_context.verify(plain_password, hashed_password)
 
   @staticmethod
   def get_password_hash(password: str) -> str:
     """Génère un hash sécurisé du mot de passe"""
-    return settings.PWD_CONTEXT.hash(password)
+    return pwd_context.hash(password)
 
   @staticmethod
   def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -41,7 +42,7 @@ class AuthService:
   async def get_current_user(
     cls,
     request: Request,
-    token: Annotated[str, Depends(settings.OAUTH2_SCHEME)],
+    token: Annotated[str, Depends(oauth2_scheme)],
     db: Session = Depends(get_db)
   ) -> DBUser:
     """Récupère l'utilisateur courant à partir du token JWT"""

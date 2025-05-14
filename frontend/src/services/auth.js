@@ -2,19 +2,18 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api',
-  headers: { 'Content-Type': 'application/json' },
-  withCredentials: true,
+  headers: { 'Content-Type': 'application/json' }
 });
 
 // Intercepteur pour ajouter le token à chaque requête
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-}, (error) => {
-  return Promise.reject(error);
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  }, (error) => {
+    return Promise.reject(error);
 });
 
 // Fonctions d'authentification
@@ -45,15 +44,6 @@ export const logout = async () => {
   localStorage.removeItem('access_token');
 };
 
-export const getCurrentUser = async () => {
-  try {
-    const response = await api.get('/auth/me');
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-};
-
 export const register = async (userData) => {
   try {
     const response = await api.post('/auth/register', userData);
@@ -61,6 +51,15 @@ export const register = async (userData) => {
     return response.data;
   } catch (error) {
     // Gérer les erreurs d'inscription ici si nécessaire
+    throw error;
+  }
+};
+
+export const getCurrentUser = async () => {
+  try {
+    const response = await api.get('/auth/me');
+    return response.data;
+  } catch (error) {
     throw error;
   }
 };

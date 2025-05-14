@@ -1,5 +1,3 @@
-from passlib.context import CryptContext
-from fastapi.security import OAuth2PasswordBearer
 from dotenv import load_dotenv
 import os
 
@@ -10,13 +8,6 @@ class Settings:
   ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv('ACCESS_TOKEN_EXPIRE_MINUTES'))
   SECRET_KEY: str = os.getenv('SECRET_KEY')
   ALGORITHM: str = os.getenv('ALGORITHM')
-
-  # Configuration Auth
-  PWD_CONTEXT = CryptContext(schemes=["bcrypt"], deprecated="auto")
-  OAUTH2_SCHEME = OAuth2PasswordBearer(
-    tokenUrl="api/auth/token",
-    scheme_name="JWT"
-  )
 
   # Supabase Configuration
   SUPABASE_URL: str = os.getenv('SUPABASE_URL')

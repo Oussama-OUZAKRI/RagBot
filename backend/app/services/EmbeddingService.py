@@ -1,7 +1,7 @@
 # backend/app/services/embedding.py
 import openai
 import numpy as np
-from typing import List
+from typing import List, Dict, Any
 from app.core.config import settings
 import logging
 

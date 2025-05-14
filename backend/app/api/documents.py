@@ -7,10 +7,11 @@ import uuid
 from pathlib import Path
 
 from app.dependencies import get_current_active_user
-from app.services.VectorStore import VectorStoreService
+from app.services.VectorStore import rag_service
 from app.services.EmbeddingService import get_embedding_service
+from app.services.SupabaseStorage import SupabaseStorageService
 from app.utils.file_parser import parse_pdf, parse_docx, parse_txt
-from app.utils.text_processing import chunk_text
+from app.utils.text_processing import create_semantic_chunks
 from app.models.document import Document
 from app.models.user import User
 from app.db.base import get_db
@@ -18,9 +19,6 @@ from app.schemas.document import DocumentUploadResponse, DocumentResponse
 from app.core.config import settings
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
-
-# Initialisation du client Supabase
-supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 
 # Dependencies
 DatabaseSession = Annotated[Session, Depends(get_db)]
@@ -35,29 +33,6 @@ FILE_PARSERS = {
 
 # Types MIME autorisés
 ALLOWED_MIME_TYPES = list(FILE_PARSERS.keys())
-
-def upload_to_supabase(file_content: bytes, file_path: str, content_type: str) -> str:
-  """Upload file to Supabase Storage"""
-  try:
-    # Déterminer le type MIME si non spécifié
-    if not content_type:
-      content_type = mimetypes.guess_type(file_path)[0] or 'application/octet-stream'
-    
-    # Upload du fichier
-    res = supabase.storage.from_(settings.SUPABASE_BUCKET_NAME).upload(
-      path=file_path,
-      file=file_content,
-      file_options={"content-type": content_type}
-    )
-    
-    # Récupérer l'URL publique
-    url = supabase.storage.from_(settings.SUPABASE_BUCKET_NAME).get_public_url(file_path)
-    return url
-  except Exception as e:
-    raise HTTPException(
-      status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-      detail=f"Supabase upload failed: {str(e)}"
-    )
 
 @router.post(
   "/",
@@ -96,19 +71,19 @@ async def upload_file(
       if file_ext : unique_filename = f"documents/{current_user.id}/{uuid.uuid4()}{file_ext}"
       
       # 1. Upload vers Supabase Storage
-      file_url = upload_to_supabase(file_content, unique_filename, file.content_type)
+      file_url = SupabaseStorageService.upload_file(file_content, unique_filename, file.content_type)
       
       # 2. Parse content based on file type
       parse_func = FILE_PARSERS[file.content_type]
-      text = parse_func(file_content)
+      parsed_document = parse_func(file_content)
       
       # 3. Process text
-      chunks = chunk_text(text, chunk_size=512, overlap=64)
+      chunks = create_semantic_chunks(parsed_document.get('text'))
       embeddings = get_embedding_service.get_embeddings(chunks)
       
       # 4. Store in vector database
       vector_store = VectorStoreService()
-      doc_id = vector_store.add_documents(chunks, embeddings)
+      doc_id = rag_service.process_document(parsed_document, embeddings)
       
       # 5. Save metadata in database
       db_doc = Document(
