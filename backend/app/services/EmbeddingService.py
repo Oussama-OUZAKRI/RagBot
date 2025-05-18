@@ -1,4 +1,3 @@
-# backend/app/services/embedding.py
 import openai
 import numpy as np
 from typing import List, Dict, Any

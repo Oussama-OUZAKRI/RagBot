@@ -1,4 +1,3 @@
-# backend/app/services/rag_service.py
 from openai import OpenAI
 from app.core.config import settings
 

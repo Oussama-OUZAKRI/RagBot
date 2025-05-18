@@ -9,6 +9,6 @@ export default defineConfig({
     tailwindcss()
   ],
   server: {
-    allowedHosts: ["5173-oussamaouzakri-ragbot-iwoyhznmec5.ws-eu118.gitpod.io"]
+    allowedHosts: ["5173-oussamaouzakri-ragbot-4umcox64x8e.ws-eu118.gitpod.io"]
   }
 })

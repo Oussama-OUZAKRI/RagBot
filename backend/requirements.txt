@@ -16,3 +16,5 @@ supabase
 bcrypt
 chardet
 nltk
+psycopg2
+pydantic[email]

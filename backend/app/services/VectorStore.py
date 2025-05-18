@@ -35,62 +35,64 @@ class ChromaVectorStoreService:
     self.distance_func = distance_func
     self.persist_directory = persist_directory
     self.collection_name = collection_name
-    
-    # Initialisation de ChromaDB
-    self._initialize_chroma_client()
-    
+
     # Métadonnées supplémentaires pour le suivi et les statistiques
     self.stats = {
       "document_count": 0,
       "chunk_count": 0,
       "collections": {}
     }
+    
+    # Initialisation de ChromaDB
+    self._initialize_chroma_client()
+    
       
   def _initialize_chroma_client(self):
     """Initialise le client et la collection ChromaDB"""
     try:
-      # Configuration de ChromaDB
-      client_settings = Settings(
-        chroma_db_impl="duckdb+parquet",  # Implémentation par défaut
-        persist_directory=self.persist_directory  # Répertoire de persistance
-      )
-      
-      # Créer le client ChromaDB
+      # Créer le client ChromaDB - Using the new client initialization approach
       if self.persist_directory:
         logger.info(f"Initializing persistent ChromaDB at {self.persist_directory}")
-        self.client = chromadb.PersistentClient(path=self.persist_directory, settings=client_settings)
+        self.client = chromadb.PersistentClient(path=self.persist_directory)
       else:
         logger.info("Initializing in-memory ChromaDB")
-        self.client = chromadb.Client(settings=client_settings)
+        self.client = chromadb.Client()
       
-      # Créer ou récupérer la collection
+      # Vérifier si la collection existe déjà
+      collection_exists = False
       try:
-        # Essayer de récupérer une collection existante
+        # Check if the collection exists
+        collections = self.client.list_collections()
+        collection_exists = any(collection.name == self.collection_name for collection in collections)
+      except Exception as e:
+        logger.warning(f"Failed to check existing collections: {str(e)}")
+          
+      # Créer ou récupérer la collection
+      if collection_exists:
+        # Si la collection existe, la récupérer
         self.collection = self.client.get_collection(
-          name=self.collection_name,
-          embedding_function=None  # Nous fournissons nos propres embeddings
+          name=self.collection_name
         )
         logger.info(f"Retrieved existing collection '{self.collection_name}'")
-        
-        # Mettre à jour les statistiques
-        self.stats["document_count"] = self.collection.count()
-        self.stats["chunk_count"] = self.collection.count()
-          
-      except Exception:
-        # Créer une nouvelle collection si elle n'existe pas
+      else:
+        # Si la collection n'existe pas, la créer
         self.collection = self.client.create_collection(
           name=self.collection_name,
           embedding_function=None,  # Nous fournissons nos propres embeddings
           metadata={"dimension": self.embedding_dimension, "distance_func": self.distance_func}
         )
         logger.info(f"Created new collection '{self.collection_name}'")
-          
+              
+      # Mettre à jour les statistiques
+      self.stats["document_count"] = self.collection.count()
+      self.stats["chunk_count"] = self.collection.count()
+              
       # Initialiser les statistiques de la collection
       self.stats["collections"][self.collection_name] = {
         "count": self.collection.count(),
         "metadata": self.collection.metadata
       }
-        
+            
     except Exception as e:
       logger.error(f"Failed to initialize ChromaDB: {str(e)}")
       raise RuntimeError(f"ChromaDB initialization failed: {str(e)}")

@@ -5,6 +5,7 @@ from app.core.config import settings
 from app.api.auth import router as auth_router
 from app.api.documents import router as documents_router
 from app.db.init_db import init_db
+from app.db.create_db import create_database_if_not_exists
 
 app = FastAPI(title="RAG-Automate")
 
@@ -19,5 +20,9 @@ app.add_middleware(
   allow_headers=["*"],
 )
 
+@app.on_event("startup")
+def startup():
+  create_database_if_not_exists()  # Crée la base si elle n'existe pas
+  
 app.include_router(auth_router, prefix="/api")
 app.include_router(documents_router, prefix="/api")

@@ -15,7 +15,7 @@ class Settings:
   SUPABASE_BUCKET_NAME: str = os.getenv('SUPABASE_BUCKET_NAME')
 
   # Configuration de la base de données
-  DATABASE_URL: str = "postgresql+psycopg2://postgres:toor@localhost/auth_db"
+  DATABASE_URL: str = "postgresql+psycopg2://postgres:toor@localhost/ragbot_db"
   
   # Rôles autorisés
   ALLOWED_ROLES: list[str] = ["admin", "user"]
