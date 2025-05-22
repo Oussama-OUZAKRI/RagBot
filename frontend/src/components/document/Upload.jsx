@@ -39,45 +39,50 @@ export const DocumentUpload = () => {
     if (files.length === 0) return;
 
     setIsUploading(true);
-    const uploadResults = [];
+    let uploadResults = [];
 
     try {
-      for (const fileObj of files) {
-        if (fileObj.status === 'success') continue;
+      // Créer un seul FormData pour tous les fichiers
+      const formData = new FormData();
+      
+      // Ajouter tous les fichiers sous la clé "files" (pluriel)
+      files.forEach(fileObj => {
+        formData.append('files', fileObj.file);
+      });
 
-        const formData = new FormData();
-        formData.append('file', fileObj.file);
-        formData.append('metadata', JSON.stringify({
-          title: metadata.title || fileObj.file.name,
-          description: metadata.description,
-          tags: metadata.tags.split(',').map(tag => tag.trim()),
-          visibility: metadata.visibility,
-          uploadedBy: user?.id
+      // Ajouter les métadonnées
+      formData.append('metadata', JSON.stringify({
+        title: metadata.title || files[0].file.name, // Utiliser le premier nom de fichier si pas de titre
+        description: metadata.description,
+        tags: metadata.tags.split(',').map(tag => tag.trim()),
+        visibility: metadata.visibility,
+        uploadedBy: user?.id
+      }));
+
+      try {
+        // Envoyer tous les fichiers en une seule requête
+        const response = await documents.upload(formData, (progressEvent) => {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          setUploadProgress(prev => ({
+            ...prev,
+            overall: percentCompleted
+          }));
+        });
+
+        // Mettre à jour tous les fichiers comme réussis
+        uploadResults = files.map(fileObj => ({
+          ...fileObj,
+          status: 'success',
+          documentId: response.documentId // Adaptez selon la réponse de votre API
         }));
-
-        try {
-          const response = await documents.upload(formData, (progressEvent) => {
-            const percentCompleted = Math.round(
-              (progressEvent.loaded * 100) / progressEvent.total
-            );
-            setUploadProgress(prev => ({
-              ...prev,
-              [fileObj.id]: percentCompleted
-            }));
-          });
-
-          uploadResults.push({
-            ...fileObj,
-            status: 'success',
-            documentId: response.documentId
-          });
-        } catch (error) {
-          uploadResults.push({
-            ...fileObj,
-            status: 'error',
-            error: error.message
-          });
-        }
+      } catch (error) {
+        uploadResults = files.map(fileObj => ({
+          ...fileObj,
+          status: 'error',
+          error: error.message
+        }));
       }
 
       setFiles(uploadResults);

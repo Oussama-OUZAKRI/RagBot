@@ -15,7 +15,7 @@ class Settings:
   SUPABASE_BUCKET_NAME: str = os.getenv('SUPABASE_BUCKET_NAME')
 
   # Configuration de la base de données
-  DATABASE_URL: str = "postgresql+psycopg2://postgres:toor@localhost/ragbot_db"
+  DATABASE_URL: str = "postgresql+psycopg2://postgres:toor@localhost/ragbot_db?client_encoding=utf8"
   
   # Rôles autorisés
   ALLOWED_ROLES: list[str] = ["admin", "user"]
@@ -23,5 +23,8 @@ class Settings:
   # Configuration d'OpenAI
   OPENAI_API_KEY: str = os.getenv('OPENAI_API_KEY')
   EMBEDDING_MODEL: str = os.getenv('EMBEDDING_MODEL')
+  OPENAI_MODEL: str = os.getenv('OPENAI_MODEL')
+  LLM_TEMPERATURE: float = float(os.getenv('LLM_TEMPERATURE'))
+  LLM_MAX_TOKENS: int = int(os.getenv('LLM_MAX_TOKENS'))
 
 settings = Settings()

@@ -1,11 +1,8 @@
-import { useState, useRef, useEffect } from 'react'
-import { Send, RefreshCw } from 'lucide-react'
-
 export const Input = ({ onSend, isLoading, hasSelectedDocs }) => {
   const [message, setMessage] = useState('')
   const textareaRef = useRef(null)
 
-  // Ajuster la hauteur du textarea automatiquement
+  // Auto-adjust textarea height
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
@@ -32,9 +29,8 @@ export const Input = ({ onSend, isLoading, hasSelectedDocs }) => {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="relative">
-      <div className="flex items-end space-x-2">
-        {/* Zone de texte */}
+    <form onSubmit={handleSubmit} className="relative max-w-3xl mx-auto">
+      <div className="relative">
         <textarea
           ref={textareaRef}
           value={message}
@@ -42,24 +38,22 @@ export const Input = ({ onSend, isLoading, hasSelectedDocs }) => {
           onKeyDown={handleKeyDown}
           placeholder={
             hasSelectedDocs 
-              ? "Ask about the selected documents..." 
-              : "Type a message or select documents above..."
+              ? "Posez une question sur les documents sélectionnés..." 
+              : "Tapez un message..."
           }
           disabled={isLoading}
           rows={1}
-          className="flex-1 p-3 pr-10 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full pl-4 pr-12 py-3 border border-gray-300 rounded-full resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+          style={{ minHeight: '50px', maxHeight: '120px' }}
         />
         
-        {/* Bouton d'envoi */}
         <button
           type="submit"
           disabled={isLoading || !message.trim()}
-          className={`p-2 rounded-full ${
-            isLoading 
-              ? 'bg-gray-300 text-gray-500'
-              : message.trim()
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'bg-gray-200 text-gray-400'
+          className={`absolute right-2 top-2 p-2 rounded-full ${
+            isLoading || !message.trim()
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-blue-600 text-white hover:bg-blue-700'
           }`}
         >
           {isLoading ? (
@@ -70,10 +64,11 @@ export const Input = ({ onSend, isLoading, hasSelectedDocs }) => {
         </button>
       </div>
       
-      {/* Indicateur de documents sélectionnés */}
+      {/* Indicator for selected documents */}
       {hasSelectedDocs && (
-        <div className="absolute -top-6 left-0 text-xs text-blue-600">
-          Chatting with selected documents
+        <div className="mt-2 text-xs text-blue-600 flex items-center">
+          <FileText className="w-4 h-4 mr-1" />
+          Conversation basée sur les documents sélectionnés
         </div>
       )}
     </form>

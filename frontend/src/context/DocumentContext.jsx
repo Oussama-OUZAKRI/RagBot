@@ -4,7 +4,7 @@ import { documents as documentService } from '../services/api';
 
 const DocumentContext = createContext();
 
-export function DocumentProvider({ children }) {
+export const DocumentProvider = ({ children }) => {
   const { user, isAuthenticated } = useAuth();
   const [documents, setDocuments] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -28,8 +28,15 @@ export function DocumentProvider({ children }) {
     try {
       setIsLoading(true);
       setError(null);
-      const docs = await documentService.getAll();
-      setDocuments(docs);
+      const response = await documentService.getAll();
+      // Transformer les données pour inclure les champs calculés
+      const transformedDocs = response.data.map(doc => ({
+        ...doc,
+        uploadDate: new Date(doc.created_at).toLocaleDateString(),
+        size: `${(doc.file_size / 1024).toFixed(2)} Ko`,
+        type: doc.file_type.split('/')[1]?.toUpperCase() || doc.file_type
+      }));
+      setDocuments(transformedDocs);
     } catch (err) {
       setError(err.message);
       console.error('Failed to load documents:', err);
@@ -121,12 +128,14 @@ export function DocumentProvider({ children }) {
 
   // Filtrage et tri des documents
   const getFilteredDocuments = () => {
+    if (!Array.isArray(documents)) return [];
+    
     return documents
       .filter(doc => {
-        const matchesType = filters.type === 'all' || doc.type === filters.type;
+        const matchesType = filters.type === 'all' || doc.type?.toLowerCase() === filters.type?.toLowerCase();
         const matchesStatus = filters.status === 'all' || doc.status === filters.status;
         const matchesVisibility = filters.visibility === 'all' || doc.visibility === filters.visibility;
-        const isOwnerOrPublic = doc.uploadedBy === user?.id || doc.visibility !== 'private';
+        const isOwnerOrPublic = doc.user_id === user?.id || doc.visibility !== 'private';
         
         return matchesType && matchesStatus && matchesVisibility && isOwnerOrPublic;
       })
@@ -190,7 +199,7 @@ export function DocumentProvider({ children }) {
   );
 }
 
-export function useDocument() {
+export const useDocument = () => {
   const context = useContext(DocumentContext);
   if (context === undefined) {
     throw new Error('useDocument must be used within a DocumentProvider');

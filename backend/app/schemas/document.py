@@ -12,7 +12,7 @@ class DocumentResponse(DocumentBase):
     id: int
     user_id: int
     original_filename: str
-    storage_url: str
+    storage_url: Optional[str] = None
     vector_id: str
     file_size: int
     file_type: str

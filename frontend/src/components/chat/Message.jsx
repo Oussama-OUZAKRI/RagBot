@@ -1,67 +1,87 @@
-import { useState } from 'react'
-import { FileText, Trash2 } from 'lucide-react'
-import { useAuth } from '../../context/AuthContext'
+import { useState } from 'react';
+import { ThumbsDown, ThumbsUp, Copy, FileText } from 'lucide-react';
 
-export const Message = ({ id, text, sender, sources, isError, timestamp }) => {
-  const [expandedSources, setExpandedSources] = useState(false)
-  const { user } = useAuth()
+export const Message = ({ message, onCopy, onFeedback }) => {
+  const [isSourcesExpanded, setIsSourcesExpanded] = useState(false)
+  const [showActions, setShowActions] = useState(false)
+  const { text, sender, sources, isError, timestamp } = message
+  
   const isBot = sender === 'bot'
   const isUser = sender === 'user'
-
+  
   const formatTime = (isoString) => {
     return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
-
+  
   return (
     <div 
-      className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
-      data-message-id={id}
+      className={`group flex ${isUser ? 'justify-end' : 'justify-start'}`}
+      onMouseEnter={() => setShowActions(true)}
+      onMouseLeave={() => setShowActions(false)}
     >
       <div 
-        className={`max-w-[85%] rounded-lg p-3 ${
+        className={`relative max-w-[85%] rounded-2xl px-4 py-3 ${
           isUser 
-            ? 'bg-blue-600 text-white rounded-br-none' 
+            ? 'bg-blue-600 text-white' 
             : isError 
-              ? 'bg-red-100 text-red-800 rounded-bl-none' 
-              : 'bg-white text-gray-800 shadow rounded-bl-none'
+              ? 'bg-red-50 text-red-800 border border-red-100' 
+              : 'bg-white text-gray-800 shadow-sm border border-gray-100'
         }`}
       >
-        {/* Texte du message */}
-        <div className="whitespace-pre-wrap">{text}</div>
+        {/* Message content */}
+        <div className="whitespace-pre-wrap text-sm">{text}</div>
         
-        {/* Métadonnées */}
-        <div className={`mt-1 flex items-center justify-between text-xs ${
-          isUser ? 'text-blue-100' : isError ? 'text-red-600' : 'text-gray-500'
-        }`}>
-          <span>{formatTime(timestamp)}</span>
+        {/* Message metadata & actions */}
+        <div className="mt-1.5 flex items-center justify-between text-xs">
+          <span className={isUser ? 'text-blue-200' : 'text-gray-500'}>
+            {formatTime(timestamp)}
+          </span>
           
-          {isUser && user?.isAdmin && (
-            <button 
-              className="ml-2 hover:opacity-70"
-              onClick={() => console.log('Delete message', id)} // À implémenter
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+          {/* Actions for bot messages only */}
+          {isBot && showActions && (
+            <div className="ml-4 flex items-center space-x-2 text-gray-400">
+              <button 
+                onClick={() => onFeedback(true)} 
+                className="p-1 hover:text-blue-600 transition-colors" 
+                title="Message utile"
+              >
+                <ThumbsUp size={14} />
+              </button>
+              <button 
+                onClick={() => onFeedback(false)} 
+                className="p-1 hover:text-blue-600 transition-colors" 
+                title="Message pas utile"
+              >
+                <ThumbsDown size={14} />
+              </button>
+              <button 
+                onClick={() => onCopy(text)} 
+                className="p-1 hover:text-blue-600 transition-colors" 
+                title="Copier le message"
+              >
+                <Copy size={14} />
+              </button>
+            </div>
           )}
         </div>
         
-        {/* Sources (pour les réponses du bot) */}
+        {/* Sources section */}
         {isBot && sources && sources.length > 0 && (
-          <div className="mt-2 pt-2 border-t border-opacity-20 border-gray-400">
+          <div className="mt-2 pt-2 border-t border-gray-200">
             <button
-              onClick={() => setExpandedSources(!expandedSources)}
-              className="text-xs flex items-center text-blue-500 hover:text-blue-700"
+              onClick={() => setIsSourcesExpanded(!isSourcesExpanded)}
+              className="text-xs flex items-center text-blue-600 hover:text-blue-800"
             >
               <FileText className="w-4 h-4 mr-1" />
-              {expandedSources ? 'Hide sources' : `Show ${sources.length} source(s)`}
+              {isSourcesExpanded ? 'Masquer les sources' : `Afficher les sources (${sources.length})`}
             </button>
             
-            {expandedSources && (
-              <div className="mt-2 space-y-1">
+            {isSourcesExpanded && (
+              <div className="mt-2 space-y-2">
                 {sources.map((source, idx) => (
-                  <div key={idx} className="text-xs p-2 bg-gray-100 rounded">
-                    <div className="font-medium">{source.document_title || 'Untitled Document'}</div>
-                    <div className="text-gray-600">{source.page_content?.slice(0, 150)}...</div>
+                  <div key={idx} className="text-xs p-2 bg-blue-50 rounded-lg">
+                    <div className="font-medium text-blue-900">{source.document_title || 'Document sans titre'}</div>
+                    <div className="text-gray-700">{source.page_content?.slice(0, 150)}...</div>
                     <div className="text-gray-500 text-xs mt-1">Page: {source.page_number || 'N/A'}</div>
                   </div>
                 ))}

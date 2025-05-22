@@ -1,3 +1,4 @@
+import os
 from pdfminer.high_level import extract_text as extract_pdf_text
 from pdfminer.layout import LAParams
 from docx import Document as DocxDocument
@@ -6,7 +7,9 @@ import re
 import chardet
 from typing import Dict, List, Any, Optional
 
-def parse_pdf(file_content: bytes) -> Dict[str, Any]:
+from app.utils.text_processing import create_semantic_chunks
+
+def parse_pdf(file_content: bytes, extract_metadata: bool = True) -> Dict[str, Any]:
   """
   Extraction améliorée de texte depuis un fichier PDF
   
@@ -63,7 +66,7 @@ def parse_pdf(file_content: bytes) -> Dict[str, Any]:
   except Exception as e:
     raise ValueError(f"PDF parsing failed: {str(e)}")
 
-def parse_docx(file_content: bytes) -> Dict[str, Any]:
+def parse_docx(file_content: bytes, extract_metadata: bool = True) -> Dict[str, Any]:
   """
   Extraction améliorée de texte depuis un fichier DOCX
   
@@ -207,14 +210,6 @@ def parse_txt(file_content: bytes) -> Dict[str, Any]:
       "chunks": create_semantic_chunks(text),
       "file_type": "txt",
     }
-    
-    # Extraire métadonnées simples du nom de fichier si disponible
-    if filename:
-      name_without_ext = os.path.splitext(filename)[0]
-      result["metadata"] = {
-        "filename": filename,
-        "title": name_without_ext.replace("_", " ").strip()
-      }
         
     return result
       

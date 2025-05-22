@@ -4,7 +4,7 @@ import {
   Download, Trash2, Eye, EyeOff, Loader2 
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { documents as docs } from '../../services/api';
+import { documents as docs } from '../../services';
 
 export const DocumentList = () => {
   const { user } = useAuth();
@@ -28,74 +28,14 @@ export const DocumentList = () => {
     const fetchDocuments = async () => {
       try {
         setIsLoading(true);
-        // Simuler un appel API
-        setTimeout(() => {
-          const mockDocuments = [
-            {
-              id: 'doc1',
-              title: 'Rapport annuel 2023',
-              filename: 'rapport-2023.pdf',
-              type: 'pdf',
-              size: '2.4 MB',
-              status: 'indexed',
-              visibility: 'team',
-              uploadedBy: 'admin',
-              uploadedAt: '2025-05-01T14:30:00Z',
-              indexedAt: '2025-05-01T14:35:00Z'
-            },
-            {
-              id: 'doc2',
-              title: 'Présentation produits',
-              filename: 'produits.pptx',
-              type: 'pptx',
-              size: '5.1 MB',
-              status: 'indexed',
-              visibility: 'public',
-              uploadedBy: user?.id,
-              uploadedAt: '2025-05-02T09:15:00Z',
-              indexedAt: '2025-05-02T09:20:00Z'
-            },
-            {
-              id: 'doc3',
-              title: 'Documentation technique',
-              filename: 'tech-docs.docx',
-              type: 'docx',
-              size: '1.8 MB',
-              status: 'processing',
-              visibility: 'private',
-              uploadedBy: user?.id,
-              uploadedAt: '2025-05-03T11:45:00Z',
-              indexedAt: null
-            },
-            {
-              id: 'doc4',
-              title: 'Notes de réunion',
-              filename: 'reunion-0405.txt',
-              type: 'txt',
-              size: '0.2 MB',
-              status: 'indexed',
-              visibility: 'private',
-              uploadedBy: user?.id,
-              uploadedAt: '2025-05-04T16:20:00Z',
-              indexedAt: '2025-05-04T16:22:00Z'
-            },
-            {
-              id: 'doc5',
-              title: 'Politique de confidentialité',
-              filename: 'confidentialite.pdf',
-              type: 'pdf',
-              size: '3.5 MB',
-              status: 'error',
-              visibility: 'public',
-              uploadedBy: 'admin',
-              uploadedAt: '2025-05-05T10:10:00Z',
-              indexedAt: null,
-              error: 'Erreur de parsing'
-            }
-          ];
-          setDocuments(mockDocuments);
-          setIsLoading(false);
-        }, 800);
+        const response = await docs.getAll();
+        const data = response.data.map(doc => ({
+          ...doc,
+          uploadedAt: new Date(doc.created_at).toLocaleDateString(),
+          size: `${(doc.file_size / 1024).toFixed(2)} Ko`
+        }));
+        setDocuments(data);
+        setIsLoading(false);
       } catch (err) {
         setError(err.message);
         setIsLoading(false);
@@ -103,7 +43,7 @@ export const DocumentList = () => {
     };
 
     fetchDocuments();
-  }, [user?.id]);
+  }, []);
 
   const handleSearch = (e) => {
     setSearchQuery(e.target.value);
@@ -186,9 +126,10 @@ export const DocumentList = () => {
   // Filtrer et trier les documents
   const filteredDocuments = documents
     .filter(doc => {
-      const matchesSearch = doc.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          doc.filename.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesType = filters.type === 'all' || doc.type === filters.type;
+      const matchesSearch = searchQuery === '' || 
+        (doc.title?.toLowerCase()?.includes(searchQuery.toLowerCase()) || 
+         doc.original_filename?.toLowerCase()?.includes(searchQuery.toLowerCase()));
+      const matchesType = filters.type === 'all' || doc.file_type === filters.type;
       const matchesStatus = filters.status === 'all' || doc.status === filters.status;
       const matchesVisibility = filters.visibility === 'all' || doc.visibility === filters.visibility;
       const matchesOwnership = (user?.id && (doc.uploadedBy === user.id)) || doc.visibility !== 'private';
@@ -478,14 +419,14 @@ export const DocumentList = () => {
                     <div className="flex justify-end space-x-2">
                       <button
                         title="Télécharger"
-                        className="text-blue-600 hover:text-blue-900"
+                        className="text-blue-600 cursor-pointer hover:text-blue-900"
                       >
                         <Download size={18} />
                       </button>
                       <button
                         title="Supprimer"
                         onClick={() => handleDelete(doc.id)}
-                        className="text-red-600 hover:text-red-900"
+                        className="text-red-600 cursor-pointer hover:text-red-900"
                       >
                         <Trash2 size={18} />
                       </button>

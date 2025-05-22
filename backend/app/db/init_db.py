@@ -1,4 +1,3 @@
-from app.models import user
 from app.db.base import Base, engine
 
 def init_db():

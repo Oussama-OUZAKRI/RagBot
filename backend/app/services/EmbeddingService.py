@@ -1,6 +1,5 @@
 import openai
-import numpy as np
-from typing import List, Dict, Any
+from typing import List
 from app.core.config import settings
 import logging
 
@@ -28,11 +27,11 @@ class EmbeddingService:
             if not texts:
                 return []
                 
-            response = self.client.embeddings.create({
-                model: self.model,
-                input: texts,
-                encoding_format: "float"
-            })
+            response = self.client.embeddings.create(
+                model=self.model,
+                input=texts,
+                encoding_format="float"
+            )
             
             # Return embeddings in order
             return [data.embedding for data in response.data]

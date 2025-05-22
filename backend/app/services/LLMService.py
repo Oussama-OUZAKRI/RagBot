@@ -1,6 +1,5 @@
-# backend/app/services/llmService.py
 import openai
-from typing import List, Optional
+from typing import  Optional
 from app.core.config import settings
 import logging
 
