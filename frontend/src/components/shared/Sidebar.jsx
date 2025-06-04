@@ -1,10 +1,15 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { House, Files, BotMessageSquare, UserCog, PanelRightOpen, PanelLeftOpen } from 'lucide-react';
+import { checkSystemHealth } from '../../services/health';
 
 export const Sidebar = ({ userRole }) => {
   const location = useLocation()
   const [collapsed, setCollapsed] = useState(false)
+  const [healthStatus, setHealthStatus] = useState({
+    api: false,
+    chromadb: false
+  })
 
   const navigation = [
     { name: 'Tableau de bord', path: '/dashboard', icon: <House /> },
@@ -15,6 +20,23 @@ export const Sidebar = ({ userRole }) => {
   if (userRole === 'admin') {
     navigation.push({ name: 'Administration', path: '/admin', icon: <UserCog /> });
   }
+
+  // Check system health every 30 seconds
+  useEffect(() => {
+    const checkHealth = async () => {
+      const status = await checkSystemHealth();
+      setHealthStatus(status);
+    };
+
+    // Initial check
+    checkHealth();
+
+    // Set up interval for periodic checks
+    const interval = setInterval(checkHealth, 30000);
+
+    // Cleanup interval on component unmount
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className={`relative bg-gray-800 text-white transition-all duration-300 ${collapsed ? 'w-16' : 'w-64'}`}>
@@ -60,11 +82,11 @@ export const Sidebar = ({ userRole }) => {
           <div className="bg-gray-700 rounded-lg p-3 text-xs text-gray-300">
             <p className="font-medium">Statut du système</p>
             <div className="flex items-center mt-2">
-              <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+              <div className={`w-3 h-3 rounded-full mr-2 ${healthStatus.api ? 'bg-green-500' : 'bg-red-500'}`}></div>
               <span>Connecté à l'API</span>
             </div>
             <div className="flex items-center mt-1">
-              <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+              <div className={`w-3 h-3 rounded-full mr-2 ${healthStatus.chromadb ? 'bg-green-500' : 'bg-red-500'}`}></div>
               <span>Base vectorielle</span>
             </div>
           </div>

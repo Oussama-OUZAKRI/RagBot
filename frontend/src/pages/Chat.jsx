@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { ChatSidebar, ChatContent } from '../components'
 import { SettingsPopup } from '../components/chat/SettingsPopup'
+import { sendMessage, getConversationHistory } from '../services/chat'
+import { getDocuments } from '../services/documents'
 
 // Main Chat Page Component
 const ChatPage = () => {
@@ -13,6 +15,9 @@ const ChatPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [isMobile, setIsMobile] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const [conversationId, setConversationId] = useState(null)
+  const [error, setError] = useState(null)
+  const [retryMessage, setRetryMessage] = useState(null)
   
   const chatEndRef = useRef(null)
   const inputRef = useRef(null)
@@ -35,16 +40,16 @@ const ChatPage = () => {
   }, [])
 
   useEffect(() => {
-    // Simulate loading documents
-    const mockDocuments = [
-      { id: '1', title: 'Documentation produit', original_filename: 'doc.pdf', status: 'indexed' },
-      { id: '2', title: 'Rapport financier 2024', original_filename: 'finance.docx', status: 'indexed' },
-      { id: '3', title: 'Présentation clients', original_filename: 'clients.pptx', status: 'indexed' },
-      { id: '4', title: 'Données utilisateurs', original_filename: 'data.xlsx', status: 'processing' },
-      { id: '5', title: 'Procédures internes', original_filename: 'procedures.pdf', status: 'indexed' },
-    ]
+    const loadDocuments = async () => {
+      try {
+        const documents = await getDocuments();
+        setAvailableDocuments(documents.filter(doc => doc.status === 'indexed'));
+      } catch (error) {
+        console.error('Error loading documents:', error);
+      }
+    };
     
-    setAvailableDocuments(mockDocuments.filter(doc => doc.status === 'indexed'))
+    loadDocuments();
   }, [])
 
   useEffect(() => {
@@ -56,6 +61,28 @@ const ChatPage = () => {
   useEffect(() => {
     inputRef.current?.focus()
   }, [])
+
+  // Load chat history if we have a conversation ID
+  useEffect(() => {
+    const loadHistory = async () => {
+      if (conversationId) {
+        try {
+          const history = await getConversationHistory(conversationId)
+          setMessages(history.map(msg => ({
+            id: msg.id,
+            text: msg.content,
+            sender: msg.role === 'user' ? 'user' : 'bot',
+            timestamp: msg.created_at,
+            references: msg.references || []
+          })))
+        } catch (error) {
+          console.error('Error loading chat history:', error)
+        }
+      }
+    }
+    
+    loadHistory()
+  }, [conversationId])
 
   const handleSend = async (e) => {
     e?.preventDefault()
@@ -75,31 +102,29 @@ const ChatPage = () => {
     setIsLoading(true)
     
     try {
-      // Simulate response delay
-      setTimeout(() => {
-        const assistantMessage = { 
-          id: Date.now() + 1,
-          text: "Voici une réponse générée par le modèle en utilisant les connaissances issues de vos documents. Cette réponse peut inclure des citations directes et des références aux sources pertinentes que vous avez sélectionnées.",
-          sender: 'bot',
-          timestamp: new Date().toISOString(),
-          sources: selectedDocuments.length > 0 
-            ? availableDocuments
-                .filter(doc => selectedDocuments.includes(doc.id))
-                .slice(0, 2)
-                .map(doc => ({ 
-                  document_title: doc.title || doc.original_filename,
-                  page_content: "Extrait pertinent du document...",
-                  page_number: 1
-                }))
-            : []
-        }
-        
-        setMessages(prev => [...prev, assistantMessage])
-        setIsLoading(false)
-      }, 1500)
+      const response = await sendMessage(
+        input,
+        selectedDocuments,
+        conversationId
+      )
+      
+      const assistantMessage = { 
+        id: Date.now() + 1,
+        text: response.message,
+        sender: 'bot',
+        timestamp: response.created_at,
+        references: response.references || []
+      }
+      
+      setMessages(prev => [...prev, assistantMessage])
+      
+      // Save conversation ID if this is the first message
+      if (!conversationId) {
+        setConversationId(response.conversation_id)
+      }
+      
     } catch (error) {
       console.error('Erreur lors de l\'envoi du message', error)
-      setIsLoading(false)
       
       setMessages(prev => [
         ...prev,
@@ -111,6 +136,19 @@ const ChatPage = () => {
           isError: true
         }
       ])
+      setError('Une erreur s\'est produite. Veuillez réessayer.')
+      setRetryMessage(input)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleRetry = async () => {
+    if (retryMessage) {
+      setError(null)
+      setInput(retryMessage)
+      setRetryMessage(null)
+      await handleSend(null)
     }
   }
 
@@ -155,6 +193,8 @@ const ChatPage = () => {
         inputRef={inputRef}
         setSelectedDocuments={setSelectedDocuments}
         setMessages={setMessages}
+        error={error}
+        onRetry={handleRetry}
       />
 
       {/* Settings Modal */}

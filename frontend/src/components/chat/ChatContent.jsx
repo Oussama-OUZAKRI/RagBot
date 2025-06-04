@@ -1,4 +1,4 @@
-import { X, ChevronLeft, Menu, MessageCircle, Send, Trash2 } from 'lucide-react'
+import { X, ChevronLeft, Menu, MessageCircle, Send, Trash2, RefreshCcw } from 'lucide-react'
 import { Message } from './'
 import { getFileIcon, handleClearChat, handleCopyMessage, handleFeedback, toggleDocumentSelection, toggleSidebar } from '../../constants/document'
 
@@ -18,6 +18,8 @@ const ChatContent = ({
   setMobileSidebarOpen,
   setSidebarOpen,
   setMessages,
+  error,
+  onRetry,
 }) => {
   return (
     <div className="flex-1 flex flex-col overflow-hidden relative">
@@ -38,15 +40,25 @@ const ChatContent = ({
             </p>
           )}
         </div>
-        
-        <div className="flex space-x-2">          
-          <button 
-            onClick={() => handleClearChat(setMessages)}
-            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full cursor-pointer"
-            title="Effacer la conversation"
-          >
-            <Trash2 size={20} />
-          </button>
+          <div className="flex space-x-2">          
+          <div className="flex gap-2">
+            {error && onRetry && (
+              <button
+                onClick={onRetry}
+                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full"
+                title="Réessayer le dernier message"
+              >
+                <RefreshCcw size={18} />
+              </button>
+            )}
+            <button 
+              onClick={() => handleClearChat(setMessages)}
+              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full cursor-pointer"
+              title="Effacer la conversation"
+            >
+              <Trash2 size={20} />
+            </button>
+          </div>
         </div>
       </div>
       

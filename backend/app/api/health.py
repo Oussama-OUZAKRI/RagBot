@@ -9,7 +9,7 @@ from app.models.user import User
 
 router = APIRouter()
 
-@router.get("/health", response_model=Dict)
+@router.get("/", response_model=Dict)
 async def check_health(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)

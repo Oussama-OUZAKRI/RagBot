@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ThumbsDown, ThumbsUp, Copy, FileText } from 'lucide-react';
+import { ThumbsDown, ThumbsUp, Copy, FileText, AlertCircle } from 'lucide-react';
 
 export const Message = ({ message, onCopy, onFeedback }) => {
   const [isSourcesExpanded, setIsSourcesExpanded] = useState(false)
@@ -29,7 +29,14 @@ export const Message = ({ message, onCopy, onFeedback }) => {
         }`}
       >
         {/* Message content */}
-        <div className="whitespace-pre-wrap text-sm">{text}</div>
+        {isError ? (
+          <div className="flex items-center gap-2 text-sm">
+            <AlertCircle size={16} />
+            <span>{text}</span>
+          </div>
+        ) : (
+          <div className="whitespace-pre-wrap text-sm">{text}</div>
+        )}
         
         {/* Message metadata & actions */}
         <div className="mt-1.5 flex items-center justify-between text-xs">

@@ -1,44 +1,58 @@
 import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Eye, FileText, MessageSquare, Clock, Users } from 'lucide-react';
+import { Eye, FileText, MessageSquare, Clock, Users, AlertCircle, RefreshCcw } from 'lucide-react';
+import { getDashboardStats, getRecentDocuments, getPopularQueries } from '../services';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
     totalDocuments: 0,
     totalQueries: 0,
     averageResponseTime: 0,
-    activeUsers: 0
+    activeUsers: 0,
+    documentsByType: {},
+    queriesByDay: {},
+    storageUsed: 0
   });
 
   const [queryData, setQueryData] = useState([]);
+  const [recentDocs, setRecentDocs] = useState([]);
+  const [popularQueries, setPopularQueries] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        // Remplacer par un vrai appel API
-        setTimeout(() => {
-          setStats({
-            totalDocuments: 156,
-            totalQueries: 2347,
-            averageResponseTime: 1.8,
-            activeUsers: 42
-          });
+        setIsLoading(true);
+        setError(null);
 
-          setQueryData([
-            { name: 'Lun', queries: 120 },
-            { name: 'Mar', queries: 180 },
-            { name: 'Mer', queries: 200 },
-            { name: 'Jeu', queries: 230 },
-            { name: 'Ven', queries: 280 },
-            { name: 'Sam', queries: 150 },
-            { name: 'Dim', queries: 100 },
-          ]);
+        // Fetch all data in parallel
+        const [statsData, recentDocsData, popularQueriesData] = await Promise.all([
+          getDashboardStats(),
+          getRecentDocuments(3),
+          getPopularQueries(3)
+        ]);
 
-          setIsLoading(false);
-        }, 1000);
+        // Update stats
+        setStats(statsData);
+
+        // Process query data for the chart
+        const queryDataArray = Object.entries(statsData.queriesByDay).map(([date, count]) => ({
+          name: new Date(date).toLocaleDateString('fr-FR', { weekday: 'short' }),
+          queries: count
+        })).slice(-7);
+        setQueryData(queryDataArray);
+
+        // Update recent documents
+        setRecentDocs(recentDocsData);
+
+        // Update popular queries
+        setPopularQueries(popularQueriesData);
+
       } catch (error) {
         console.error('Erreur lors du chargement des données du tableau de bord', error);
+        setError("Impossible de charger les données du tableau de bord");
+      } finally {
         setIsLoading(false);
       }
     };
@@ -64,6 +78,30 @@ const Dashboard = () => {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }    if (error) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg relative" role="alert">
+          <div className="flex items-center">
+            <AlertCircle className="mr-2" />
+            <div>
+              <p className="font-bold">Erreur lors du chargement du tableau de bord</p>
+              <p className="text-sm">{error}</p>
+            </div>
+          </div>
+          <button 
+            className="absolute top-4 right-4 p-1 hover:bg-red-100 rounded-full"
+            onClick={() => {
+              setError(null);
+              fetchDashboardData();
+            }}
+            title="Réessayer"
+          >
+            <RefreshCcw size={20} />
+          </button>
+        </div>
       </div>
     );
   }
@@ -129,36 +167,28 @@ const Dashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                <tr className="border-b border-gray-100">
-                  <td className="py-3">Documentation produit</td>
-                  <td className="py-3">PDF</td>
-                  <td className="py-3">05/05/25</td>
-                  <td className="py-3">
-                    <button className="p-1 hover:bg-gray-100 rounded">
-                      <Eye size={16} />
-                    </button>
-                  </td>
-                </tr>
-                <tr className="border-b border-gray-100">
-                  <td className="py-3">Rapport annuel</td>
-                  <td className="py-3">DOCX</td>
-                  <td className="py-3">04/05/25</td>
-                  <td className="py-3">
-                    <button className="p-1 hover:bg-gray-100 rounded">
-                      <Eye size={16} />
-                    </button>
-                  </td>
-                </tr>
-                <tr className="border-b border-gray-100">
-                  <td className="py-3">Procédures internes</td>
-                  <td className="py-3">PDF</td>
-                  <td className="py-3">03/05/25</td>
-                  <td className="py-3">
-                    <button className="p-1 hover:bg-gray-100 rounded">
-                      <Eye size={16} />
-                    </button>
-                  </td>
-                </tr>
+                {recentDocs.map((doc) => (
+                  <tr key={doc.id} className="border-b border-gray-100">
+                    <td className="py-3">{doc.title || doc.original_filename}</td>
+                    <td className="py-3">{doc.type?.toUpperCase()}</td>
+                    <td className="py-3">{new Date(doc.created_at).toLocaleDateString('fr-FR')}</td>
+                    <td className="py-3">
+                      <button 
+                        className="p-1 hover:bg-gray-100 rounded"
+                        onClick={() => window.open(`/documents/${doc.id}`, '_blank')}
+                      >
+                        <Eye size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {recentDocs.length === 0 && (
+                  <tr>
+                    <td colSpan="4" className="py-4 text-center text-gray-500">
+                      Aucun document récent
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -167,18 +197,19 @@ const Dashboard = () => {
         <div className="bg-white p-6 rounded-lg shadow-md border border-gray-100">
           <h2 className="text-lg font-semibold mb-4">Requêtes populaires</h2>
           <div className="space-y-4">
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <p className="font-medium">Comment fonctionne le système de facturation ?</p>
-              <p className="text-sm text-gray-500 mt-1">27 requêtes</p>
-            </div>
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <p className="font-medium">Quelles sont les étapes pour créer un nouveau compte ?</p>
-              <p className="text-sm text-gray-500 mt-1">19 requêtes</p>
-            </div>
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <p className="font-medium">Comment accéder aux rapports financiers ?</p>
-              <p className="text-sm text-gray-500 mt-1">15 requêtes</p>
-            </div>
+            {popularQueries.map((item, index) => (
+              <div key={index} className="p-3 bg-gray-50 rounded-lg">
+                <p className="font-medium">{item.query}</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  {item.count} requête{item.count > 1 ? 's' : ''}
+                </p>
+              </div>
+            ))}
+            {popularQueries.length === 0 && (
+              <div className="text-center text-gray-500 py-4">
+                Aucune requête populaire
+              </div>
+            )}
           </div>
         </div>
       </div>

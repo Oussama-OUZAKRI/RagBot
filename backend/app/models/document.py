@@ -13,5 +13,7 @@ class Document(Base):
   file_size = Column(Integer)
   file_type = Column(String(100))
   file_extension = Column(String(10))
+  status = Column(String(20), default="processing", nullable=True)  # processing, indexed, error
+  type = Column(String(20))  # pdf, docx, txt, etc.
   created_at = Column(DateTime, nullable=False)
   updated_at = Column(DateTime, nullable=False)
