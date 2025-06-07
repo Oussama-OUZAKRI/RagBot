@@ -1,13 +1,10 @@
 import { useState, useRef } from 'react';
 import { UploadCloud, FileText, X, Loader2 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import { documents } from '../../services';
+import { docs } from '../../services';
 
-export const DocumentUpload = () => {
-  const { user } = useAuth();
+export const DocumentUpload = ({ onUploadSuccess }) => {
   const [files, setFiles] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState({});
   const [metadata, setMetadata] = useState({
     title: '',
     description: '',
@@ -39,56 +36,54 @@ export const DocumentUpload = () => {
     if (files.length === 0) return;
 
     setIsUploading(true);
-    let uploadResults = [];
 
     try {
-      // Créer un seul FormData pour tous les fichiers
       const formData = new FormData();
+      setFiles(prevFiles => prevFiles.map(file => ({
+        ...file,
+        status: 'uploading'
+      })));
       
-      // Ajouter tous les fichiers sous la clé "files" (pluriel)
+      // Ajouter les fichiers
       files.forEach(fileObj => {
-        formData.append('files', fileObj.file);
+        formData.append('file', fileObj.file);
       });
 
-      // Ajouter les métadonnées
+      // Ajouter les métadonnées communes
       formData.append('metadata', JSON.stringify({
-        title: metadata.title || files[0].file.name, // Utiliser le premier nom de fichier si pas de titre
+        title: metadata.title || files[0].file.name,
         description: metadata.description,
-        tags: metadata.tags.split(',').map(tag => tag.trim()),
+        tags: metadata.tags.split(',').filter(tag => tag.trim()).map(tag => tag.trim()),
         visibility: metadata.visibility,
-        uploadedBy: user?.id
+        files: files.map(f => ({
+          name: f.file.name,
+          type: f.file.type,
+          size: f.file.size
+        }))
       }));
 
-      try {
-        // Envoyer tous les fichiers en une seule requête
-        const response = await documents.upload(formData, (progressEvent) => {
-          const percentCompleted = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total
-          );
-          setUploadProgress(prev => ({
-            ...prev,
-            overall: percentCompleted
-          }));
-        });
-
-        // Mettre à jour tous les fichiers comme réussis
-        uploadResults = files.map(fileObj => ({
-          ...fileObj,
-          status: 'success',
-          documentId: response.documentId // Adaptez selon la réponse de votre API
-        }));
-      } catch (error) {
-        uploadResults = files.map(fileObj => ({
-          ...fileObj,
-          status: 'error',
-          error: error.message
-        }));
+      const response = await docs.upload(formData);
+      
+      setFiles(prevFiles => prevFiles.map((file, idx) => ({
+        ...file,
+        status: 'success',
+        documentId: response.data?.[idx]?.document?.id || null
+      })));
+      
+      // Appeler onUploadSuccess après un téléversement réussi
+      if (onUploadSuccess) {
+        onUploadSuccess();
       }
 
-      setFiles(uploadResults);
+    } catch (err) {
+      console.error('Error uploading documents:', err);
+      setFiles(prevFiles => prevFiles.map(file => ({
+        ...file,
+        status: 'error',
+        error: err.message
+      })));
     } finally {
       setIsUploading(false);
-      setUploadProgress({});
     }
   };
 
@@ -139,6 +134,7 @@ export const DocumentUpload = () => {
                   className={`flex items-center justify-between p-3 rounded-md border ${
                     fileObj.status === 'success' ? 'border-green-200 bg-green-50' :
                     fileObj.status === 'error' ? 'border-red-200 bg-red-50' :
+                    fileObj.status === 'uploading' ? 'border-blue-200 bg-blue-50' :
                     'border-gray-200'
                   }`}
                 >
@@ -148,23 +144,20 @@ export const DocumentUpload = () => {
                       <p className="text-sm font-medium truncate">{fileObj.file.name}</p>
                       <p className="text-xs text-gray-500">
                         {(fileObj.file.size / 1024 / 1024).toFixed(2)} MB
+                        {fileObj.error && (
+                          <span className="text-red-500 ml-2"> - {fileObj.error}</span>
+                        )}
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-center">
-                    {fileObj.status === 'uploading' && (
-                      <div className="w-24 h-2 bg-gray-200 rounded-full mr-3 overflow-hidden">
-                        <div 
-                          className="h-full bg-blue-500" 
-                          style={{ width: `${uploadProgress[fileObj.id] || 0}%` }}
-                        ></div>
-                      </div>
-                    )}
                     {fileObj.status === 'success' ? (
                       <span className="text-xs text-green-600 mr-2">Terminé</span>
                     ) : fileObj.status === 'error' ? (
                       <span className="text-xs text-red-600 mr-2">Erreur</span>
+                    ) : fileObj.status === 'uploading' ? (
+                      <span className="text-xs text-blue-600 mr-2">En cours...</span>
                     ) : null}
                     <button
                       type="button"

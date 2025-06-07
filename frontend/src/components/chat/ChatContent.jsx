@@ -1,6 +1,7 @@
-import { X, ChevronLeft, Menu, MessageCircle, Send, Trash2, RefreshCcw } from 'lucide-react'
+import { X, ChevronLeft, Menu, MessageCircle, Send, Trash2, RefreshCcw, Plus, Bug } from 'lucide-react'
 import { Message } from './'
 import { getFileIcon, handleClearChat, handleCopyMessage, handleFeedback, toggleDocumentSelection, toggleSidebar } from '../../constants/document'
+import { useState } from 'react'
 
 const ChatContent = ({
   messages,
@@ -20,7 +21,12 @@ const ChatContent = ({
   setMessages,
   error,
   onRetry,
+  selectedConversation,
+  currentConversation,
+  handleNewConversation, // Assurez-vous que cette prop est bien destructurée
 }) => {
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden relative">
       {/* Chat Header */}
@@ -29,18 +35,25 @@ const ChatContent = ({
           onClick={() => toggleSidebar(isMobile, setMobileSidebarOpen, setSidebarOpen)} 
           className="p-2 mr-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full cursor-pointer"
         >
-          {isMobile || !sidebarOpen ? <Menu size={20} /> : <ChevronLeft size={20} />}
+          {isMobile || !sidebarOpen ? <ChevronLeft size={20} /> : <Menu size={20} />}
         </button>
         
         <div className="flex-1">
           <h1 className="text-lg font-semibold">RAG Chat Assistant</h1>
-          {selectedDocuments.length > 0 && (
+          {selectedConversation ? (
             <p className="text-xs text-gray-500">
-              {selectedDocuments.length} document{selectedDocuments.length > 1 ? 's' : ''} sélectionné{selectedDocuments.length > 1 ? 's' : ''}
+              Conversation du {new Date(currentConversation?.created_at).toLocaleDateString()}
             </p>
-          )}
+          ) : null}
         </div>
-          <div className="flex space-x-2">          
+        <div className="flex gap-2">
+          <button
+            onClick={handleNewConversation} // Utilisation correcte de la prop
+            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full"
+            title="Nouvelle conversation"
+          >
+            <Plus size={20} />
+          </button>
           <div className="flex gap-2">
             {error && onRetry && (
               <button
@@ -58,10 +71,44 @@ const ChatContent = ({
             >
               <Trash2 size={20} />
             </button>
+            <button
+              onClick={() => setShowDebugPanel(!showDebugPanel)}
+              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full"
+              title="Afficher/masquer le débogage"
+            >
+              <Bug size={20} />
+            </button>
           </div>
         </div>
       </div>
       
+      {/* Debug Panel */}
+      {showDebugPanel && (
+        <div className="bg-gray-50 border-b border-gray-200 p-4 text-sm font-mono overflow-auto max-h-[300px]">
+          <h3 className="font-bold mb-2">Informations de débogage:</h3>
+          <div className="space-y-2">
+            <div>
+              <strong>Documents sélectionnés:</strong>
+              <pre className="bg-white p-2 rounded">
+                {JSON.stringify(selectedDocuments, null, 2)}
+              </pre>
+            </div>
+            <div>
+              <strong>Conversation courante:</strong>
+              <pre className="bg-white p-2 rounded">
+                {JSON.stringify(currentConversation, null, 2)}
+              </pre>
+            </div>
+            <div>
+              <strong>Dernier message:</strong>
+              <pre className="bg-white p-2 rounded">
+                {JSON.stringify(messages[messages.length - 1], null, 2)}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Chat Messages */}
       <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
         {messages.length === 0 ? (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, use } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { 
   AdminDashboard as Admin, 
@@ -22,6 +22,7 @@ function App() {
       
       if (authStatus) {
         const user = await getCurrentUser()
+        console.log('Current user:', user, user.role);
         setUserRole(user.role)
       }
       

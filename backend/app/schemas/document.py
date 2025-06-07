@@ -17,6 +17,8 @@ class DocumentResponse(DocumentBase):
     file_size: int
     file_type: str
     file_extension: str
+    status: str
+    type: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -26,9 +28,10 @@ class DocumentResponse(DocumentBase):
 class DocumentUploadResponse(BaseModel):
     success: bool
     message: str
-    document: Optional[DocumentResponse] = None             # Seulement si success=True
-    error: Optional[str] = None                             # Seulement si success=False
-    status_code: Optional[int] = None                       # Seulement si success=False
+    document: Optional[DocumentResponse] = None
+    error: Optional[str] = None
+    status_code: Optional[int] = None
+    filename: Optional[str] = None  # Ajout du champ filename manquant
 
     class Config:
         from_attributes = True

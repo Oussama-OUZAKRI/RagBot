@@ -1,18 +1,17 @@
-from pydantic import BaseModel
+from uuid import UUID
+from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
 
-class ConversationBase(BaseModel):
-    title: Optional[str] = None
+from app.schemas.chat import Message
 
-class ConversationCreate(ConversationBase):
+class Conversation(BaseModel):
+    id: UUID
     user_id: int
-
-class Conversation(ConversationBase):
-    id: int
-    user_id: int
-    created_at: datetime
-    updated_at: datetime
+    title: str
+    messages: List[Message] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: Optional[datetime] = None 
 
     class Config:
         from_attributes = True

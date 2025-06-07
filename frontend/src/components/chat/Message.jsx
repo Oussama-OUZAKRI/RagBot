@@ -2,16 +2,16 @@ import { useState } from 'react';
 import { ThumbsDown, ThumbsUp, Copy, FileText, AlertCircle } from 'lucide-react';
 
 export const Message = ({ message, onCopy, onFeedback }) => {
-  const [isSourcesExpanded, setIsSourcesExpanded] = useState(false)
-  const [showActions, setShowActions] = useState(false)
-  const { text, sender, sources, isError, timestamp } = message
+  const [isSourcesExpanded, setIsSourcesExpanded] = useState(false);
+  const [showActions, setShowActions] = useState(false);
+  const { text, sender, references, isError, timestamp } = message;
   
-  const isBot = sender === 'bot'
-  const isUser = sender === 'user'
+  const isBot = sender === 'bot';
+  const isUser = sender === 'user';
   
   const formatTime = (isoString) => {
-    return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  }
+    return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
   
   return (
     <div 
@@ -44,52 +44,54 @@ export const Message = ({ message, onCopy, onFeedback }) => {
             {formatTime(timestamp)}
           </span>
           
-          {/* Actions for bot messages only */}
-          {isBot && showActions && (
-            <div className="ml-4 flex items-center space-x-2 text-gray-400">
-              <button 
-                onClick={() => onFeedback(true)} 
-                className="p-1 hover:text-blue-600 transition-colors" 
-                title="Message utile"
-              >
-                <ThumbsUp size={14} />
-              </button>
-              <button 
-                onClick={() => onFeedback(false)} 
-                className="p-1 hover:text-blue-600 transition-colors" 
-                title="Message pas utile"
-              >
-                <ThumbsDown size={14} />
-              </button>
-              <button 
-                onClick={() => onCopy(text)} 
-                className="p-1 hover:text-blue-600 transition-colors" 
-                title="Copier le message"
-              >
-                <Copy size={14} />
-              </button>
-            </div>
-          )}
+          {/* Espace réservé pour les actions (toujours présent mais invisible si non utilisé) */}
+          <div className="ml-4 flex items-center space-x-2 h-[24px]">
+            {isBot && (
+              <div className={`flex items-center space-x-2 text-gray-400 ${showActions ? 'visible' : 'invisible'}`}>
+                <button 
+                  onClick={() => onFeedback(true)} 
+                  className="p-1 hover:text-blue-600 transition-colors" 
+                  title="Message utile"
+                >
+                  <ThumbsUp size={14} />
+                </button>
+                <button 
+                  onClick={() => onFeedback(false)} 
+                  className="p-1 hover:text-blue-600 transition-colors" 
+                  title="Message pas utile"
+                >
+                  <ThumbsDown size={14} />
+                </button>
+                <button 
+                  onClick={() => onCopy(text)} 
+                  className="p-1 hover:text-blue-600 transition-colors" 
+                  title="Copier le message"
+                >
+                  <Copy size={14} />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
         
         {/* Sources section */}
-        {isBot && sources && sources.length > 0 && (
+        {isBot && references && references.length > 0 && (
           <div className="mt-2 pt-2 border-t border-gray-200">
             <button
               onClick={() => setIsSourcesExpanded(!isSourcesExpanded)}
               className="text-xs flex items-center text-blue-600 hover:text-blue-800"
             >
               <FileText className="w-4 h-4 mr-1" />
-              {isSourcesExpanded ? 'Masquer les sources' : `Afficher les sources (${sources.length})`}
+              {isSourcesExpanded ? 'Masquer les sources' : `Afficher les sources (${references.length})`}
             </button>
             
             {isSourcesExpanded && (
               <div className="mt-2 space-y-2">
-                {sources.map((source, idx) => (
+                {references.map((ref, idx) => (
                   <div key={idx} className="text-xs p-2 bg-blue-50 rounded-lg">
-                    <div className="font-medium text-blue-900">{source.document_title || 'Document sans titre'}</div>
-                    <div className="text-gray-700">{source.page_content?.slice(0, 150)}...</div>
-                    <div className="text-gray-500 text-xs mt-1">Page: {source.page_number || 'N/A'}</div>
+                    <div className="font-medium text-blue-900">{ref.document_title || 'Document sans titre'}</div>
+                    <div className="text-gray-700">{ref.content?.slice(0, 150)}...</div>
+                    <div className="text-gray-500 text-xs mt-1">Page: {ref.page_number || 'N/A'}</div>
                   </div>
                 ))}
               </div>
@@ -98,5 +100,5 @@ export const Message = ({ message, onCopy, onFeedback }) => {
         )}
       </div>
     </div>
-  )
-}
+  );
+};

@@ -16,3 +16,4 @@ class UserCreate(BaseModel):
   username: str
   email: EmailStr
   password: str
+  role: Optional[str] = "user" # 'admin' or 'user'

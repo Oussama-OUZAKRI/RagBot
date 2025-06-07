@@ -1,7 +1,7 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, JSON, ForeignKey
+from sqlalchemy import UUID, Column, Integer, String, Float, DateTime, JSON, ForeignKey
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-from ..db.base import Base
+from app.db.base import Base
 
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
@@ -14,7 +14,7 @@ class ChatMessage(Base):
     references = Column(JSON)
     
     # Foreign keys
-    conversation_id = Column(Integer, ForeignKey("conversations.id"))
+    conversation_id = Column(UUID(as_uuid=True), ForeignKey("conversations.id"))
     user_id = Column(Integer, ForeignKey("users.id"))
     
     # Relations

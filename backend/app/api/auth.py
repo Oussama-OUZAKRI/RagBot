@@ -59,7 +59,7 @@ async def register_user(
     email=user_data.email,
     hashed_password=AuthService.get_password_hash(user_data.password),
     is_active=True,
-    role="user"  # Par défaut, tous les nouveaux utilisateurs sont 'user'
+    role=user_data.role or 'user'
   )
   
   db.add(new_user)

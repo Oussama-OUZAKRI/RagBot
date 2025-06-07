@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { ChatSidebar, ChatContent } from '../components'
 import { SettingsPopup } from '../components/chat/SettingsPopup'
-import { sendMessage, getConversationHistory } from '../services/chat'
-import { getDocuments } from '../services/documents'
+import { docs } from '../services/documents'
+import { chat } from '../services/chat';
 
 // Main Chat Page Component
 const ChatPage = () => {
@@ -18,7 +18,10 @@ const ChatPage = () => {
   const [conversationId, setConversationId] = useState(null)
   const [error, setError] = useState(null)
   const [retryMessage, setRetryMessage] = useState(null)
-  
+  const [conversations, setConversations] = useState([]);
+  const [selectedConversation, setSelectedConversation] = useState(null);
+  const [currentConversation, setCurrentConversation] = useState(null);
+
   const chatEndRef = useRef(null)
   const inputRef = useRef(null)
 
@@ -42,8 +45,9 @@ const ChatPage = () => {
   useEffect(() => {
     const loadDocuments = async () => {
       try {
-        const documents = await getDocuments();
-        setAvailableDocuments(documents.filter(doc => doc.status === 'indexed'));
+        const response = await docs.getAll();
+        console.log('Loaded documents:', response.data);
+        setAvailableDocuments(response.data);
       } catch (error) {
         console.error('Error loading documents:', error);
       }
@@ -67,22 +71,42 @@ const ChatPage = () => {
     const loadHistory = async () => {
       if (conversationId) {
         try {
-          const history = await getConversationHistory(conversationId)
+          const history = await chat.getConversationHistory(conversationId);
           setMessages(history.map(msg => ({
             id: msg.id,
             text: msg.content,
             sender: msg.role === 'user' ? 'user' : 'bot',
             timestamp: msg.created_at,
             references: msg.references || []
-          })))
+          })));
         } catch (error) {
-          console.error('Error loading chat history:', error)
+          console.error('Error loading chat history:', error);
+          setError('Erreur lors du chargement de l\'historique');
         }
       }
-    }
+    };
     
-    loadHistory()
-  }, [conversationId])
+    loadHistory();
+  }, [conversationId]);
+
+  // Charger les conversations au montage
+  useEffect(() => {
+    const loadConversations = async () => {
+      try {
+        const response = await chat.getConversations();
+        setConversations(response);
+      } catch (error) {
+        console.error('Error loading conversations:', error);
+      }
+    };
+    loadConversations();
+  }, []);
+
+  // Mettre à jour la conversation courante
+  useEffect(() => {
+    const current = conversations.find(c => c.id === selectedConversation);
+    setCurrentConversation(current);
+  }, [selectedConversation, conversations]);
 
   const handleSend = async (e) => {
     e?.preventDefault()
@@ -102,7 +126,7 @@ const ChatPage = () => {
     setIsLoading(true)
     
     try {
-      const response = await sendMessage(
+      const response = await chat.sendMessage(
         input,
         selectedDocuments,
         conversationId
@@ -152,6 +176,19 @@ const ChatPage = () => {
     }
   }
 
+  const handleNewConversation = async () => {
+    try {
+      const newConversation = await chat.createConversation();
+      setConversationId(newConversation.id);
+      setMessages([]);
+      setInput('');
+      setSelectedConversation(newConversation.id);
+    } catch (error) {
+      console.error('Error creating new conversation:', error);
+      setError('Erreur lors de la création d\'une nouvelle conversation');
+    }
+  };
+
   return (
     <div className="flex relative h-full bg-gray-50 gap-4 overflow-hidden">
       {/* Mobile Sidebar Overlay */}
@@ -173,6 +210,10 @@ const ChatPage = () => {
         availableDocuments={availableDocuments}
         setIsSettingsOpen={setIsSettingsOpen}
         isSettingsOpen={isSettingsOpen}
+        onNewConversation={handleNewConversation}
+        conversations={conversations}
+        selectedConversation={selectedConversation}
+        onSelectConversation={setSelectedConversation}
       />
 
       {/* Main Content */}
@@ -181,7 +222,6 @@ const ChatPage = () => {
         isLoading={isLoading}
         selectedDocuments={selectedDocuments}
         availableDocuments={availableDocuments}
-        setIsSettingsOpen={setIsSettingsOpen}
         isMobile={isMobile}
         sidebarOpen={sidebarOpen}
         setMobileSidebarOpen={setMobileSidebarOpen}
@@ -195,6 +235,9 @@ const ChatPage = () => {
         setMessages={setMessages}
         error={error}
         onRetry={handleRetry}
+        selectedConversation={selectedConversation}
+        currentConversation={currentConversation}
+        handleNewConversation={handleNewConversation} // Ajout de la prop
       />
 
       {/* Settings Modal */}

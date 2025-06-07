@@ -160,14 +160,89 @@ async def upload_files(
   return results
 
 @router.get(
-  "/",
-  response_model=List[DocumentResponse],
-  status_code=status.HTTP_200_OK
+    "/",
+    response_model=List[DocumentResponse],
+    status_code=status.HTTP_200_OK
 )
 async def get_documents(
-  current_user: CurrentUser,
-  db: DatabaseSession
+    current_user: CurrentUser,
+    db: DatabaseSession
 ):
-  """Retrieve all processed documents for the current user"""
-  documents = db.query(Document).filter(Document.user_id == current_user.id).all()
-  return documents
+    """Retrieve all processed documents for the current user"""
+    try:
+        documents = (
+            db.query(Document)
+            .filter(Document.user_id == current_user.id)
+            .order_by(Document.created_at.desc())
+            .all()
+        )
+        
+        if not documents:
+            logger.warning(f"No documents found for user {current_user.id}")
+            return []
+            
+        logger.info(f"Found {len(documents)} documents for user {current_user.id}")
+        return documents
+        
+    except Exception as e:
+        logger.error(f"Error retrieving documents: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error retrieving documents"
+        )
+
+@router.delete(
+    "/{document_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=dict
+)
+async def delete_document(
+    document_id: int,
+    current_user: CurrentUser,
+    db: DatabaseSession
+):
+    """Delete a specific document"""
+    try:
+        # Get document
+        document = db.query(Document).filter(
+            Document.id == document_id,
+            Document.user_id == current_user.id
+        ).first()
+        
+        if not document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found"
+            )
+            
+        # TODO: Delete from vector store
+        try:
+            rag_service.delete_document(document.vector_id)
+        except Exception as e:
+            logger.error(f"Error deleting from vector store: {str(e)}")
+            
+        # TODO: Delete from storage
+        if document.storage_url and document.storage_url != "None":
+            try:
+                SupabaseStorageService.delete_file(document.storage_url)
+            except Exception as e:
+                logger.error(f"Error deleting from storage: {str(e)}")
+
+        # Delete from database
+        db.delete(document)
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": "Document successfully deleted",
+            "document_id": document_id
+        }
+        
+    except HTTPException as http_exc:
+        raise http_exc
+    except Exception as e:
+        logger.error(f"Error deleting document: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error deleting document"
+        )

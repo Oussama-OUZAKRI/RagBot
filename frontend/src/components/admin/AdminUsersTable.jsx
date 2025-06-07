@@ -1,4 +1,4 @@
-import { User, Lock, Edit, Trash, UserCheck } from 'lucide-react';
+import { User, Lock, UserPlus, Trash, UserCheck } from 'lucide-react';
 
 export const AdminUsersTable = ({ 
   users, 

@@ -4,9 +4,10 @@ import {
   Download, Trash2, Eye, EyeOff, Loader2 
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { documents as docs } from '../../services';
+import { docs } from '../../services';
+import { ConfirmDialog } from '../shared/ConfirmDialog';
 
-export const DocumentList = () => {
+export const DocumentList = ({ refreshTrigger }) => {
   const { user } = useAuth();
   const [documents, setDocuments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -23,27 +24,46 @@ export const DocumentList = () => {
   });
   const [selectedDocs, setSelectedDocs] = useState([]);
   const [isBulkActionLoading, setIsBulkActionLoading] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState({
+    isOpen: false,
+    documentId: null,
+    isBulk: false
+  });
 
   useEffect(() => {
     const fetchDocuments = async () => {
       try {
         setIsLoading(true);
         const response = await docs.getAll();
-        const data = response.data.map(doc => ({
-          ...doc,
-          uploadedAt: new Date(doc.created_at).toLocaleDateString(),
-          size: `${(doc.file_size / 1024).toFixed(2)} Ko`
+        console.log('API Response:', response); // Debug log
+        
+        // Vérifier si response.data existe, sinon utiliser response directement
+        const documentData = Array.isArray(response.data) ? response.data : response;
+        
+        const data = documentData.map(doc => ({
+          id: doc.id,
+          title: doc.title || doc.original_filename,
+          filename: doc.original_filename,
+          type: doc.file_type,
+          status: doc.status || 'processing',
+          visibility: doc.visibility || 'private',
+          uploadedAt: new Date(doc.created_at).toISOString(),
+          size: `${Math.round(doc.file_size / 1024)} Ko`,
+          error: doc.error
         }));
+        
+        console.log('Processed Documents:', data); // Debug log
         setDocuments(data);
         setIsLoading(false);
       } catch (err) {
+        console.error('Error fetching documents:', err);
         setError(err.message);
         setIsLoading(false);
       }
     };
 
     fetchDocuments();
-  }, []);
+  }, [refreshTrigger]);
 
   const handleSearch = (e) => {
     setSearchQuery(e.target.value);
@@ -77,49 +97,39 @@ export const DocumentList = () => {
     }
   };
 
-  const handleDelete = async (docId) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce document ?')) return;
-    
+  const handleDeleteClick = (docId) => {
+    setDeleteDialog({
+      isOpen: true,
+      documentId: docId,
+      isBulk: false
+    });
+  };
+
+  const handleBulkDeleteClick = () => {
+    setDeleteDialog({
+      isOpen: true,
+      documentId: null,
+      isBulk: true
+    });
+  };
+
+  const handleDelete = async () => {
     try {
-      await docs.delete(docId);
-      setDocuments(documents.filter(doc => doc.id !== docId));
-      setSelectedDocs(selectedDocs.filter(id => id !== docId));
+      if (deleteDialog.isBulk) {
+        setIsBulkActionLoading(true);
+        await Promise.all(selectedDocs.map(id => docs.delete(id)));
+        setDocuments(documents.filter(doc => !selectedDocs.includes(doc.id)));
+        setSelectedDocs([]);
+        setIsBulkActionLoading(false);
+      } else {
+        await docs.delete(deleteDialog.documentId);
+        setDocuments(documents.filter(doc => doc.id !== deleteDialog.documentId));
+        setSelectedDocs(selectedDocs.filter(id => id !== deleteDialog.documentId));
+      }
     } catch (err) {
       console.error('Erreur lors de la suppression:', err);
-    }
-  };
-
-  const handleBulkDelete = async () => {
-    if (selectedDocs.length === 0) return;
-    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer ${selectedDocs.length} document(s) ?`)) return;
-    
-    try {
-      setIsBulkActionLoading(true);
-      // Simuler la suppression en masse
-      await Promise.all(selectedDocs.map(id => docs.delete(id)));
-      setDocuments(documents.filter(doc => !selectedDocs.includes(doc.id)));
-      setSelectedDocs([]);
-    } catch (err) {
-      console.error('Erreur lors de la suppression en masse:', err);
     } finally {
-      setIsBulkActionLoading(false);
-    }
-  };
-
-  const handleBulkVisibility = async (visibility) => {
-    if (selectedDocs.length === 0) return;
-    
-    try {
-      setIsBulkActionLoading(true);
-      // Simuler la mise à jour en masse
-      setDocuments(documents.map(doc => 
-        selectedDocs.includes(doc.id) ? { ...doc, visibility } : doc
-      ));
-      setSelectedDocs([]);
-    } catch (err) {
-      console.error('Erreur lors de la mise à jour en masse:', err);
-    } finally {
-      setIsBulkActionLoading(false);
+      setDeleteDialog({ isOpen: false, documentId: null, isBulk: false });
     }
   };
 
@@ -128,31 +138,39 @@ export const DocumentList = () => {
     .filter(doc => {
       const matchesSearch = searchQuery === '' || 
         (doc.title?.toLowerCase()?.includes(searchQuery.toLowerCase()) || 
-         doc.original_filename?.toLowerCase()?.includes(searchQuery.toLowerCase()));
-      const matchesType = filters.type === 'all' || doc.file_type === filters.type;
+         doc.filename?.toLowerCase()?.includes(searchQuery.toLowerCase()));
+      const matchesType = filters.type === 'all' || doc.type === filters.type;
       const matchesStatus = filters.status === 'all' || doc.status === filters.status;
       const matchesVisibility = filters.visibility === 'all' || doc.visibility === filters.visibility;
-      const matchesOwnership = (user?.id && (doc.uploadedBy === user.id)) || doc.visibility !== 'private';
-      
+      // Simplifier la condition de propriété car tous les documents appartiennent à l'utilisateur courant
+      const matchesOwnership = true;
+  
       return matchesSearch && matchesType && matchesStatus && matchesVisibility && matchesOwnership;
     })
     .sort((a, b) => {
-      if (a[sortConfig.key] < b[sortConfig.key]) {
+      const aValue = a[sortConfig.key];
+      const bValue = b[sortConfig.key];
+      
+      if (!aValue || !bValue) return 0;
+      
+      if (aValue < bValue) {
         return sortConfig.direction === 'asc' ? -1 : 1;
       }
-      if (a[sortConfig.key] > b[sortConfig.key]) {
+      if (aValue > bValue) {
         return sortConfig.direction === 'asc' ? 1 : -1;
       }
       return 0;
     });
 
   const getStatusBadge = (status) => {
+    // Valeur par défaut pour éviter les undefined
+    const defaultStatus = status || 'processing';
     const statusMap = {
       indexed: { color: 'green', text: 'Indexé' },
       processing: { color: 'blue', text: 'En traitement' },
       error: { color: 'red', text: 'Erreur' }
     };
-    const { color, text } = statusMap[status] || { color: 'gray', text: 'Inconnu' };
+    const { color, text } = statusMap[defaultStatus] || { color: 'gray', text: 'Inconnu' };
     return (
       <span className={`px-2 py-1 text-xs rounded-full bg-${color}-100 text-${color}-800`}>
         {text}
@@ -161,12 +179,14 @@ export const DocumentList = () => {
   };
 
   const getVisibilityBadge = (visibility) => {
+    // Valeur par défaut pour éviter les undefined
+    const defaultVisibility = visibility || 'private';
     const visibilityMap = {
       private: { icon: <EyeOff size={14} className="mr-1" />, text: 'Privé' },
       team: { icon: <Eye size={14} className="mr-1" />, text: 'Équipe' },
       public: { icon: <Eye size={14} className="mr-1" />, text: 'Public' }
     };
-    const { icon, text } = visibilityMap[visibility] || { icon: null, text: 'Inconnu' };
+    const { icon, text } = visibilityMap[defaultVisibility] || { icon: null, text: 'Inconnu' };
     return (
       <span className="flex items-center text-xs text-gray-600">
         {icon}
@@ -289,7 +309,7 @@ export const DocumentList = () => {
               Public
             </button>
             <button
-              onClick={handleBulkDelete}
+              onClick={handleBulkDeleteClick}
               disabled={isBulkActionLoading}
               className="flex items-center text-xs bg-red-100 hover:bg-red-200 text-red-800 py-1 px-2 rounded"
             >
@@ -401,7 +421,7 @@ export const DocumentList = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(doc.uploadedAt).toLocaleDateString()}
+                    {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString() : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {doc.size}
@@ -425,7 +445,7 @@ export const DocumentList = () => {
                       </button>
                       <button
                         title="Supprimer"
-                        onClick={() => handleDelete(doc.id)}
+                        onClick={() => handleDeleteClick(doc.id)}
                         className="text-red-600 cursor-pointer hover:text-red-900"
                       >
                         <Trash2 size={18} />
@@ -438,6 +458,16 @@ export const DocumentList = () => {
           </table>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={deleteDialog.isOpen}
+        onClose={() => setDeleteDialog({ isOpen: false, documentId: null, isBulk: false })}
+        onConfirm={handleDelete}
+        title="Confirmer la suppression"
+        message={deleteDialog.isBulk 
+          ? `Êtes-vous sûr de vouloir supprimer ${selectedDocs.length} document(s) ?`
+          : "Êtes-vous sûr de vouloir supprimer ce document ?"}
+      />
     </div>
   );
 }

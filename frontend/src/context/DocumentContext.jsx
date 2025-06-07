@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
-import { documents as documentService } from '../services/api';
+import { docs } from '../services/documents';
 
 const DocumentContext = createContext();
 
@@ -28,7 +28,7 @@ export const DocumentProvider = ({ children }) => {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await documentService.getAll();
+      const response = await docs.getAll();
       // Transformer les données pour inclure les champs calculés
       const transformedDocs = response.data.map(doc => ({
         ...doc,
@@ -59,13 +59,16 @@ export const DocumentProvider = ({ children }) => {
         const percentCompleted = Math.round(
           (progressEvent.loaded * 100) / progressEvent.total
         );
+        // Utiliser un ID unique au lieu du nom de fichier
+        const uploadId = Date.now();
         setUploadProgress(prev => ({
           ...prev,
-          [formData.get('file').name]: percentCompleted
+          [uploadId]: percentCompleted
         }));
       };
 
-      const newDocument = await documentService.upload(formData, onUploadProgress);
+      const response = await docs.upload(formData, onUploadProgress);
+      const newDocument = response.data;
       setDocuments(prev => [newDocument, ...prev]);
       return { success: true, document: newDocument };
     } catch (err) {
@@ -81,7 +84,7 @@ export const DocumentProvider = ({ children }) => {
   const deleteDocument = async (id) => {
     try {
       setIsLoading(true);
-      await documentService.delete(id);
+      await docs.delete(id);
       setDocuments(prev => prev.filter(doc => doc.id !== id));
       setSelectedDocuments(prev => prev.filter(docId => docId !== id));
       return { success: true };
@@ -97,7 +100,7 @@ export const DocumentProvider = ({ children }) => {
   const deleteMultipleDocuments = async (ids) => {
     try {
       setIsLoading(true);
-      await Promise.all(ids.map(id => documentService.delete(id)));
+      await Promise.all(ids.map(id => docs.delete(id)));
       setDocuments(prev => prev.filter(doc => !ids.includes(doc.id)));
       setSelectedDocuments([]);
       return { success: true };
@@ -113,7 +116,7 @@ export const DocumentProvider = ({ children }) => {
   const updateDocumentMetadata = async (id, metadata) => {
     try {
       setIsLoading(true);
-      const updatedDoc = await documentService.updateMetadata(id, metadata);
+      const updatedDoc = await docs.updateMetadata(id, metadata);
       setDocuments(prev => 
         prev.map(doc => doc.id === id ? updatedDoc : doc)
       );
